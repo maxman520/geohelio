@@ -1,0 +1,17 @@
+# Ignore all files under Assets/Sprites/External except .meta files
+/Assets/Sprites/External/**
+!/Assets/Sprites/External/**/*.meta
+
+# Do not commit local agent guidelines
+AGENTS.md
+
+# Unity local/derived folders (do not commit)
+/Library/
+/Temp/
+/Logs/
+/UserSettings/
+
+# Common build artifacts
+/Build/
+/Builds/
+/Obj/
