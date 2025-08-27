@@ -1,0 +1,20 @@
+{
+    "asset": "f8108d617cf79e64685a08b07c89e8d8",
+    "fileName": "0198ea64-ab6d-7665-80b3-8b52748297a4.jpg",
+    "prompt": "cute and whimsical space-themed game UI button, rounded rectangle shape, soft curved edges, glowing pastel outline, bright and playful pixel art style, starry sparkles, no text inside\r\n",
+    "negativePrompt": "text, letters, numbers, watermark, logo, photorealistic, 3d render, frame, border, background, gradient shading, realistic texture\r\n",
+    "model": "072fd6c7-1a92-4d41-b504-c46546b0dd28",
+    "modelName": "Game UI Essentials",
+    "customSeed": -1,
+    "w3CTraceId": "1a2aa37a65badff86810f66d4a06636a",
+    "refinementMode": "Generation",
+    "pixelateTargetSize": 0,
+    "pixelateKeepImageSize": false,
+    "pixelatePixelBlockSize": 0,
+    "pixelateMode": 0,
+    "pixelateOutlineThickness": 0,
+    "doodles": {
+        "m_Items": []
+    },
+    "upscaleFactor": 0
+}

@@ -1,0 +1,20 @@
+{
+    "asset": "3ba8affb2a89435468fcd18f8a34097f",
+    "fileName": "0198e6bc-a3fd-7b0e-b16e-b66217ed7c93.jpg",
+    "prompt": "Panel, Space, Cartoon Style, UI, Scoreboard, Top Bar, Cute",
+    "negativePrompt": "Background, Watermark, Number, Letter",
+    "model": "072fd6c7-1a92-4d41-b504-c46546b0dd28",
+    "modelName": "Game UI Essentials",
+    "customSeed": -1,
+    "w3CTraceId": "6a4fde44f7d6f93536058fef2f30d61e",
+    "refinementMode": "Generation",
+    "pixelateTargetSize": 0,
+    "pixelateKeepImageSize": false,
+    "pixelatePixelBlockSize": 0,
+    "pixelateMode": 0,
+    "pixelateOutlineThickness": 0,
+    "doodles": {
+        "m_Items": []
+    },
+    "upscaleFactor": 0
+}
