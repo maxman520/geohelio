@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: eb75193679e38864a99c1c2af0c771b6
+guid: b79433c79552f8548869982836fc3fbb
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: -6146693527048111119
-    second: earth_idle_0
+      213: 2290081359943661442
+    second: earth_idle_edited_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -100,13 +100,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: earth_idle_0
+      name: earth_idle_edited_0
       rect:
         serializedVersion: 2
-        x: 16
-        y: 17
-        width: 107
-        height: 92
+        x: 0
+        y: 0
+        width: 105
+        height: 90
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -115,8 +115,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 1fbba11cdce82baa0800000000000000
-      internalID: -6146693527048111119
+      spriteID: 2877f2e0dd008cf10800000000000000
+      internalID: 2290081359943661442
       vertices: []
       indices: 
       edges: []
@@ -135,7 +135,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      earth_idle_0: -6146693527048111119
+      earth_idle_edited_0: 2290081359943661442
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

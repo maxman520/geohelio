@@ -235,4 +235,64 @@ public class PlayerController : MonoBehaviour
             beam.localScale = ls;
         }
     }
+
+    // 디버그(공전 궤도 기즈모)
+    [Header("디버그(공전 궤도)")]
+    public bool DebugDrawOrbit = true;               // 공전 궤도 원 표시
+    public Color OrbitGizmoColor = Color.yellow;     // 공전 궤도 색상
+    [Range(12, 256)] public int OrbitGizmoSegments = 64; // 세그먼트 수
+
+    // GC 최소화를 위한 단위 원 캐시
+    private Vector3[] orbitUnitCirclePoints;
+    private int orbitLastSegments;
+
+    // 현재 회전 중심 Transform을 외부/디버그에서 확인 가능하도록 제공
+    public Transform CurrentCenter => center == OrbitCenter.Earth ? earth : sun;
+    public bool IsSunCenter => center == OrbitCenter.Sun;
+
+    private void EnsureOrbitUnitCircleCache()
+    {
+        int seg = Mathf.Clamp(OrbitGizmoSegments, 12, 256);
+        if (orbitUnitCirclePoints == null || orbitLastSegments != seg)
+        {
+            orbitUnitCirclePoints = new Vector3[seg + 1];
+            float step = Mathf.PI * 2f / seg;
+            for (int i = 0; i <= seg; i++)
+            {
+                float a = step * i;
+                orbitUnitCirclePoints[i] = new Vector3(Mathf.Cos(a), Mathf.Sin(a), 0f); // XY 평면 단위 원
+            }
+            orbitLastSegments = seg;
+        }
+    }
+
+    private void OnDrawGizmos()
+    {
+        if (!DebugDrawOrbit) return;
+        if (earth == null || sun == null) return;
+
+        // 반지름: distance 사용 (사용자 요청)
+        float r = Mathf.Max(0f, distance);
+        if (r <= 0f) return;
+
+        // 중심: 탭 전환 상태(center)에 따라 지구/태양 중 선택
+        Transform cTr = (center == OrbitCenter.Earth) ? earth : sun;
+        if (cTr == null) return;
+
+        EnsureOrbitUnitCircleCache();
+
+        // 공전 축에 맞춰 XY 단위 원을 회전시켜 궤도 평면 정합
+        Vector3 axis = (orbitAxis.sqrMagnitude > 1e-6f) ? orbitAxis.normalized : Vector3.forward;
+        Quaternion rot = Quaternion.FromToRotation(Vector3.forward, axis);
+
+        Gizmos.color = OrbitGizmoColor;
+        Vector3 centerPos = cTr.position;
+
+        for (int i = 0; i < orbitLastSegments; i++)
+        {
+            Vector3 p0 = centerPos + rot * (orbitUnitCirclePoints[i] * r);
+            Vector3 p1 = centerPos + rot * (orbitUnitCirclePoints[i + 1] * r);
+            Gizmos.DrawLine(p0, p1);
+        }
+    }
 }

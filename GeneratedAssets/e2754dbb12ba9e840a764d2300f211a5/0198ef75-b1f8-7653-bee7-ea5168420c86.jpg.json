@@ -1,0 +1,20 @@
+{
+    "asset": "e2754dbb12ba9e840a764d2300f211a5",
+    "fileName": "0198ef75-b1f8-7653-bee7-ea5168420c86.jpg",
+    "prompt": "cute space themed game ui panel, cartoon style, pastel colors, soft glowing frame, rounded rectangular board, floating cosmic template, decorated with small stars and planets, glossy, adorable galaxy design, kawaii cosmic style, mobile game interface, empty template, horizontal panel with button area\r\n",
+    "negativePrompt": "text, letters, words, numbers, logo, watermark, icons, cluttered design, realistic photo\r\n",
+    "model": "072fd6c7-1a92-4d41-b504-c46546b0dd28",
+    "modelName": "Game UI Essentials",
+    "customSeed": -1,
+    "w3CTraceId": "e4f79772ed1eed51af7d4e91c9a89f61",
+    "refinementMode": "Generation",
+    "pixelateTargetSize": 0,
+    "pixelateKeepImageSize": false,
+    "pixelatePixelBlockSize": 0,
+    "pixelateMode": 0,
+    "pixelateOutlineThickness": 0,
+    "doodles": {
+        "m_Items": []
+    },
+    "upscaleFactor": 0
+}

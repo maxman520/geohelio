@@ -4,6 +4,7 @@
 
 # Do not commit local agent guidelines
 AGENTS.md
+WORKLOG.MD
 
 # Unity local/derived folders (do not commit)
 /Library/
