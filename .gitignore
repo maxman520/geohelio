@@ -2,9 +2,7 @@
 /Assets/Sprites/External/**
 !/Assets/Sprites/External/**/*.meta
 
-# Do not commit local agent guidelines
-AGENTS.md
-WORKLOG.MD
+# (삭제) 에이전트 가이드/워크로그는 버전에 포함
 
 # Unity local/derived folders (do not commit)
 /Library/
