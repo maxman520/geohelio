@@ -16,3 +16,7 @@ WORKLOG.MD
 /Build/
 /Builds/
 /Obj/
+
+# Generated assets (do not commit)
+/GeneratedAssets/
+/GeneratedAssets_deleted/
