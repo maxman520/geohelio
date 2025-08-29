@@ -69,16 +69,10 @@ public class Asteroid : MonoBehaviour
         if (_exploding) return;
         if (other == null) return;
 
-        // PlayerController 존재 여부로 플레이어 판정
-        var pc = other.GetComponent<PlayerController>();
-        if (pc == null)
+        // 태그 비교로 플레이어 판정 (콜라이더 자체 또는 루트 오브젝트)
+        if (other.CompareTag("Player") || other.transform.root.CompareTag("Player"))
         {
-            // 상위/자식에 있는 경우까지 보정
-            pc = other.GetComponentInParent<PlayerController>();
-        }
-
-        if (pc != null)
-        {
+            Debug.Log("is player !");
             ExplodeAsync().Forget();
         }
     }
@@ -141,6 +135,4 @@ public class Asteroid : MonoBehaviour
         // 풀로 반환
         _spawner?.Despawn(transform);
     }
-
-    // 충돌 방식이 아닌 트리거(OnTriggerEnter2D)만 사용합니다.
 }

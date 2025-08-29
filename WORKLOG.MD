@@ -143,7 +143,6 @@ chore(docs): AGENTS.md 지침에 command approval 생략 규칙 명시
 - 코딩 작업(스크립트 추가·수정)은 승인 없이 즉시 실행
 - 위 지침을 AGENTS.md의 Agent-Specific Instructions 섹션에 추가
 
-<!-- COMMIT_BOOKMARK -->
 
 fix(asteroid): OnTriggerEnter2D 태그 "Player" 비교로 충돌 판정
 
@@ -155,3 +154,40 @@ fix(physics): Asteroid_01.prefab에 Rigidbody2D(Kinematic) 추가 — 트리거 
 - 원인: 충돌쌍에 Rigidbody2D 부재로 `OnTriggerEnter2D`가 호출되지 않음
 - 변경: Asteroid 프리팹 루트에 `Rigidbody2D` 추가(BodyType: Kinematic, GravityScale: 0, Simulated: On)
 - 효과: 플레이어 자식 콜라이더와 겹칠 때 소행성 트리거 정상 호출 → 폭발/디스폰 로직 동작
+
+<!-- COMMIT_BOOKMARK -->
+feat(spawner): 월드 원점 중심 + 화면 가로 절반 반지름 스폰으로 변경
+
+- 스폰 중심을 고정적으로 월드 원점(0,0)으로 변경(기존 `center` 참조 무시)
+- 스폰 반경을 직교 카메라 기준 화면 가로 길이의 절반으로 계산(`orthographicSize * aspect`), 카메라 미탐색 시 기존 `spawnRadius` 폴백
+- 초기 스폰도 플레이어 공전 범위(현재 중심 기준 원) 내부를 제외하도록 규칙 적용(기존: 초기만 예외)
+- 원의 둘레가 아닌 원 내부 균등 분포로 스폰(`Random.insideUnitCircle` 사용; 기존 `normalized` 제거)
+- 최소 간격(0.5) 체크 로직은 그대로 유지
+- 파일: `Assets/Scripts/Game/ObjectSpawner.cs`
+
+feat(spawner,debug): 소행성 생성 가능 범위 Gizmo 시각화
+
+- Scene 뷰에서 외곽 생성 반경(월드 원점, 화면 가로 절반) 와이어 원 표시
+- 플레이어 공전 반경(생성 금지 영역) 와이어 원과 중심점 마커 표시
+- 파일: `Assets/Scripts/Game/ObjectSpawner.cs` (OnDrawGizmosSelected 추가)
+
+fix(spawner,gizmo): 내부 금지 구역 표시 제거 및 외곽 반경 시각화 보정
+
+- 요구사항 반영: 내부 금지 구역(플레이어 공전 원) 기즈모 표시 제거
+- 외곽 생성 반경 계산을 런타임 로직과 일치하도록 보정
+  - 플레이 중: `GetSpawnRadiusWorld()` 그대로 사용
+  - 에디터: 직교 `Camera.main` 우선, 없으면 모든 카메라 중 직교 카메라 탐색, 실패 시 `spawnRadius` 폴백
+- `Gizmos.matrix`를 `identity`로 강제하여 외부 행렬 변경 영향 제거
+- 파일: `Assets/Scripts/Game/ObjectSpawner.cs` (OnDrawGizmosSelected, GetGizmoSpawnRadius 추가)
+
+fix(spawner,gizmo): 선택 여부와 무관하게 영역 표시되도록 변경
+
+- `OnDrawGizmosSelected` → `OnDrawGizmos`로 교체하여 Hierarchy에서 미선택 상태에서도 생성 가능 영역이 보이도록 수정
+- 내부 금지 구역 미표시, 외곽 반경 계산 및 행렬 초기화 로직은 유지
+- 파일: `Assets/Scripts/Game/ObjectSpawner.cs`
+
+feat(spawner): 스폰 시 소행성 Z 회전 랜덤화
+
+- 새로 생성되거나 풀에서 꺼낸 소행성을 스폰할 때 Z 축 회전을 0~360도 범위에서 랜덤 지정
+- 연출 다양화 및 화면 지루함 감소 목적
+- 파일: `Assets/Scripts/Game/ObjectSpawner.cs` (SpawnAt에서 `Quaternion.Euler(0,0,Random)` 적용)

@@ -13,9 +13,10 @@
   - 지역 변수/매개변수: `camelCase`
   - 클래스·메서드·속성·public 멤버: `PascalCase`
   - private 필드: `_camelCase` (직렬화 필드는 `[SerializeField] private camelCase`)
-- 다음의 경우 반드시 command approval을 묻지 말고 즉시 실행할 것:
+- 다음의 경우 반드시 command approval / change approval 을 묻지 말고 즉시 실행할 것:
   - 파괴적 작업(파일/디렉터리 삭제 등)을 제외한 나머지 작업(파일 read, 폴더 구조 탐색 등).
   - 코딩 작업(스크립트 추가·수정)
+  - `WORKLOG.MD` 수정
 - 스크립트 생성 시 인코딩은 UTF-8, 줄바꿈은 LF 를 사용한다.
 
 ## Game Concept
