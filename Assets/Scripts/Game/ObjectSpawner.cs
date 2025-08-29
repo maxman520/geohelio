@@ -16,7 +16,6 @@ public class ObjectSpawner : MonoBehaviour
     [SerializeField] private int maxAlive = 50;               // 최대 동시 소행성 수
     [SerializeField] private float spawnRadius = 6f;          // 스폰 반경 기본값(카메라 미발견 시 폴백)
     [SerializeField] private int initialCount = 8;            // 초기 생성 개수(Initialize 시 사용)
-    [SerializeField] private Transform center;                // [사용 안 함] 과거 중심 참조(현재는 월드 원점 고정)
     [Tooltip("기존 월드에 남아있는 소행성 제거용 태그(선택). Initialize에서 사용")]
     [SerializeField] private string asteroidTag = "";         // 삭제/검색용 태그
 
@@ -31,6 +30,9 @@ public class ObjectSpawner : MonoBehaviour
     private readonly Queue<GameObject> _pool = new Queue<GameObject>(); // 풀(비활성 대기)
     private PlayerController _player;
     private Camera _camera;
+    private bool _startSignalReceived;           // 시작 신호(첫 중심 전환) 수신 여부
+    private bool _lastIsSunCenter;               // 시작 신호 감지를 위한 이전 중심 상태 스냅샷
+    private bool _initializedAfterReset;         // Initialize 이후 상태 플래그
 
     private void Awake()
     {
@@ -47,10 +49,26 @@ public class ObjectSpawner : MonoBehaviour
         {
             Debug.LogWarning("[ObjectSpawner] 카메라를 찾지 못했습니다. 스폰 반경은 설정 값(spawnRadius)을 사용합니다.");
         }
+
+        // 시작 신호 폴백 감지를 위한 초기 스냅샷
+        _lastIsSunCenter = _player != null && _player.IsSunCenter;
     }
+
+    // GameManager 이벤트에 의존하지 않고, 실제 회전 중심 전환(탭)에 의해만 시작되도록 한다.
 
     private void Update()
     {
+        // 시작 전에는 플레이어의 중심 전환을 감지해 시작 신호로 사용(폴백)
+        if (_initializedAfterReset && !_startSignalReceived && _player != null)
+        {
+            bool cur = _player.IsSunCenter;
+            if (cur != _lastIsSunCenter)
+            {
+                _lastIsSunCenter = cur;
+                HandleStartSignal();
+            }
+        }
+
         if (!_running) return;
         _timer += Time.deltaTime;
         if (_timer >= spawnInterval)
@@ -68,16 +86,31 @@ public class ObjectSpawner : MonoBehaviour
         // 기존 소행성 제거
         RemoveAllAsteroids();
 
-        // 초기 배치 생성(규칙 4도 적용: 플레이어 공전 범위는 제외)
+        // 초기 배치 생성(규칙 4 적용: 공전 범위 제외)
         for (int i = 0; i < Mathf.Max(0, initialCount); i++)
         {
             TrySpawn(ignoreOrbitRule: false);
         }
 
+        // 시작 신호 대기 상태로 리셋(씬 진입/리셋 후 탭으로 중심 전환 시까지 주기 스폰 보류)
+        _startSignalReceived = false;
+        _running = false; // 주기 스폰은 보류
+        _timer = 0f;
+        // 스냅샷 갱신(Initialize 이후의 첫 전환만 유효)
+        _lastIsSunCenter = _player != null && _player.IsSunCenter;
+        _initializedAfterReset = true;
+        Debug.Log("[ObjectSpawner] 초기화 완료: 초기 배치 생성 후 시작 신호(첫 중심 전환) 대기");
+    }
+
+    // 시작 신호 처리: 주기 스폰 시작(Initialize에서 이미 초기 배치 완료)
+    private void HandleStartSignal()
+    {
+        if (_startSignalReceived) return;
+        _startSignalReceived = true;
         // 스폰 시작
         _running = true;
         _timer = 0f;
-        Debug.Log("[ObjectSpawner] 초기화 완료: 초기 배치 생성 및 스폰 시작");
+        Debug.Log("[ObjectSpawner] 시작 신호 감지: 주기 스폰 시작");
     }
 
     /// <summary>

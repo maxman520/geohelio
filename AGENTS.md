@@ -7,16 +7,18 @@
 - 주석 및 `Debug.Log()`, `Debug.LogError()`, `Debug.LogWarning()`의 문자열, 깃 커밋 메시지를 한글로 작성할 것.
 - `FindObjectOfType` 사용이 필요하다면 대신 `FindFirstObjectByType`(제네릭 포함) 사용으로 대체할 것.
 - 단순 질문 답변을 제외한 나머지 코딩, 파일 수정 등의 작업이 끝날 때마다 반드시, 루트의 `WORKLOG.MD`에 동일한 작업 내용을 즉시 기록할 것.
+  - WORKLOG 작성 형식: `YYYY-MM-DD HH:MM | 타입 | 요약 | 파일1,파일2`
+    - 시간은 24시간 표기, 로컬 시간 사용
+    - 타입은 Conventional Commits 범주 권장: feat, fix, chore, docs, refactor, test 등
+    - 파일은 콤마로 구분하며 경로는 리포지토리 루트 기준 상대경로 사용
 - 커밋 메시지 작성 시 `WORKLOG.MD`의 북마크부터 문서 끝까지의 변경 요약을 활용할 것.
+  - 신규 항목은 항상 `<!-- COMMIT_BOOKMARK -->` 바로 아래 줄에 추가할 것.
+  - 커밋 완료 후에는 북마크를 최신 위치로 이동(또는 훅에 의해 자동 갱신)하여, 이후 커밋 메시지 요약 범위가 북마크 이후~문서 끝이 되도록 유지할 것.
 - 커밋 메시지 작성 시 `WORKLOG.MD` 요약을 참고하되, 생성 후 즉시 삭제되었거나 결과적으로 원상복구되어 실질 변화가 없는 작업(예: 임시 파일/코드 추가 후 제거)은 커밋 메시지에 포함하지 말 것.
 - 명명 규칙을 엄격 준수하고 불일치 발견 시 즉시 통일할 것:
   - 지역 변수/매개변수: `camelCase`
   - 클래스·메서드·속성·public 멤버: `PascalCase`
   - private 필드: `_camelCase` (직렬화 필드는 `[SerializeField] private camelCase`)
-- 다음의 경우 반드시 command approval / change approval 을 묻지 말고 즉시 실행할 것:
-  - 파괴적 작업(파일/디렉터리 삭제 등)을 제외한 나머지 작업(파일 read, 폴더 구조 탐색 등).
-  - 코딩 작업(스크립트 추가·수정)
-  - `WORKLOG.MD` 수정
 - 스크립트 생성 시 인코딩은 UTF-8, 줄바꿈은 LF 를 사용한다.
 
 ## Game Concept
