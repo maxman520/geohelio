@@ -77,7 +77,6 @@ chore(docs): AGENTS.md에 커밋 메시지 요약 제외 규칙 추가
 - 커밋 메시지 작성 시 `WORKLOG.MD` 요약을 참고하되,
  - 생성 후 즉시 삭제되었거나 원상복구되어 실질 변화가 없는 작업은 메시지에서 제외하도록 지침 추가
 
-<!-- COMMIT_BOOKMARK -->
 refactor(serialization,naming): 직렬화 private 필드 명명 규칙 통일(camelCase)
 
 - 규칙 반영: `[SerializeField] private camelCase`로 일괄 변경, 비직렬화 private 필드는 `_camelCase` 유지
@@ -143,3 +142,16 @@ chore(docs): AGENTS.md 지침에 command approval 생략 규칙 명시
 - 파괴적 작업(파일/디렉터리 삭제 등) 제외, 파일 읽기/폴더 탐색 등 비파괴 작업은 승인 없이 즉시 실행
 - 코딩 작업(스크립트 추가·수정)은 승인 없이 즉시 실행
 - 위 지침을 AGENTS.md의 Agent-Specific Instructions 섹션에 추가
+
+<!-- COMMIT_BOOKMARK -->
+
+fix(asteroid): OnTriggerEnter2D 태그 "Player" 비교로 충돌 판정
+
+- 기존 PlayerController 컴포넌트 검사 방식을 제거하고 `CompareTag("Player")`로 단순화
+- 플레이어 하위 콜라이더 대응을 위해 `other.transform.root.CompareTag("Player")`도 함께 확인
+
+fix(physics): Asteroid_01.prefab에 Rigidbody2D(Kinematic) 추가 — 트리거 미발동 수정
+
+- 원인: 충돌쌍에 Rigidbody2D 부재로 `OnTriggerEnter2D`가 호출되지 않음
+- 변경: Asteroid 프리팹 루트에 `Rigidbody2D` 추가(BodyType: Kinematic, GravityScale: 0, Simulated: On)
+- 효과: 플레이어 자식 콜라이더와 겹칠 때 소행성 트리거 정상 호출 → 폭발/디스폰 로직 동작
