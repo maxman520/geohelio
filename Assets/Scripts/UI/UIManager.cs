@@ -1,15 +1,17 @@
 using UnityEngine;
+using UnityEngine.Serialization;
 
-// UI 총괄 매니저: 게임오버 패널 등 UI 요소 제어를 담당
+// UI 전역 매니저: 게임오버 등 UI 요소 노출/숨김 제어
 public class UIManager : SingletonMonoBehaviour<UIManager>
 {
     [Header("참조")]
+    [FormerlySerializedAs("gameOverPanel")]
     [SerializeField] private GameOverPanel gameOverPanel; // 게임오버 패널 참조
 
     protected override void Awake()
     {
         base.Awake();
-        // 자동 참조 획득
+        // 자동 참조 보완
         if (gameOverPanel == null)
         {
             gameOverPanel = FindFirstObjectByType<GameOverPanel>();
@@ -31,7 +33,7 @@ public class UIManager : SingletonMonoBehaviour<UIManager>
         gameOverPanel?.Hide();
     }
 
-    // 버튼 요청 처리: GameManager 위임
+    // 버튼 핸들러: GameManager 위임
     public void RequestRetry()
     {
         if (GameManager.Instance != null)
@@ -40,7 +42,7 @@ public class UIManager : SingletonMonoBehaviour<UIManager>
         }
         else
         {
-            Debug.LogWarning("[UIManager] GameManager 인스턴스를 찾을 수 없습니다. 재시작 요청을 처리할 수 없습니다.");
+            Debug.LogWarning("[UIManager] GameManager 인스턴스를 찾지 못했습니다. 다시하기 요청을 처리할 수 없습니다.");
         }
     }
 
@@ -52,7 +54,7 @@ public class UIManager : SingletonMonoBehaviour<UIManager>
         }
         else
         {
-            Debug.LogWarning("[UIManager] GameManager 인스턴스를 찾을 수 없습니다. 메인 이동 요청을 처리할 수 없습니다.");
+            Debug.LogWarning("[UIManager] GameManager 인스턴스를 찾지 못했습니다. 메인 이동 요청을 처리할 수 없습니다.");
         }
     }
 }

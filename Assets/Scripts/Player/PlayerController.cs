@@ -1,32 +1,52 @@
 using UnityEngine;
+using UnityEngine.Serialization;
 
 /// <summary>
-/// 플레이어 컨트롤러: 초기 상태에서 태양이 지구 주위를 공전하도록 제어한다.
-/// - Player 오브젝트 하위에 Earth, Sun 트랜스폼이 존재한다고 가정한다.
-/// - 지구-태양 간 거리는 인스펙터에서 설정 가능하다.
+/// 플레이어 컨트롤러: 초기 상태에서 지구·태양 거리를 유지하며
+/// 탭 입력으로 회전 중심을 지구/태양으로 전환해 공전시킨다.
+/// 빔은 두 천체를 잇고 길이/두께를 설정에 따라 갱신한다.
 /// </summary>
 public class PlayerController : MonoBehaviour
 {
     [Header("참조")]
+    [FormerlySerializedAs("earth")]
+    [FormerlySerializedAs("_earth")]
     [SerializeField] private Transform earth;   // 지구 트랜스폼
+    [FormerlySerializedAs("sun")]
+    [FormerlySerializedAs("_sun")]
     [SerializeField] private Transform sun;     // 태양 트랜스폼
-    [SerializeField] private Transform beam;    // 지구-태양을 잇는 빔 트랜스폼 (스프라이트가 세로 방향)
-    [SerializeField] private SpriteRenderer beamRenderer; // 빔 스프라이트 렌더러 (길이 계산용)
+    [FormerlySerializedAs("beam")]
+    [FormerlySerializedAs("_beam")]
+    [SerializeField] private Transform beam;    // 지구-태양을 잇는 빔 트랜스폼(스프라이트 +Y가 길이 방향)
+    [FormerlySerializedAs("beamRenderer")]
+    [FormerlySerializedAs("_beamRenderer")]
+    [SerializeField] private SpriteRenderer beamRenderer; // 빔 스프라이트 렌더러(길이 계산용)
 
     [Header("설정")]
-    [Tooltip("지구-태양 간 거리 (월드 단위)")]
+    [Tooltip("지구-태양 거리(보정 포함)")]
+    [FormerlySerializedAs("distance")]
+    [FormerlySerializedAs("_distance")]
     [SerializeField] private float distance = 3f; // 지구-태양 거리
 
-    [Tooltip("초당 공전 각속도(도/초)")]
-    [SerializeField] private float orbitSpeed = 90f; // 공전 속도 (도/초)
+    [Tooltip("공전 속도(도/초)")]
+    [FormerlySerializedAs("orbitSpeed")]
+    [FormerlySerializedAs("_orbitSpeed")]
+    [SerializeField] private float orbitSpeed = 90f; // 공전 속도(도/초)
 
-    [Tooltip("공전 축 (기본: Z축, 2D 기준)")]
+    [Tooltip("공전 축(기본: Z축, 2D 평면)")]
+    [FormerlySerializedAs("orbitAxis")]
+    [FormerlySerializedAs("_orbitAxis")]
     [SerializeField] private Vector3 orbitAxis = Vector3.forward; // 공전 축
 
     [Header("빔 설정")]
-    [Tooltip("빔 두께(X 스케일). 스프라이트 폭과 곱해짐")]
+    [Tooltip("빔 두께(X 스케일). 스프라이트 길이와는 별개로 두께만 조정")]
+    [FormerlySerializedAs("beamThickness")]
+    [FormerlySerializedAs("_beamThickness")]
     [SerializeField] private float beamThickness = 1f; // 빔 두께
-    [Tooltip("지구/태양 간 거리에 빔 길이를 정확히 맞출지 여부")]
+
+    [Tooltip("지구-태양 거리 변화에 맞춰 빔 길이를 자동으로 맞춤")]
+    [FormerlySerializedAs("matchBeamToDistance")]
+    [FormerlySerializedAs("_matchBeamToDistance")]
     [SerializeField] private bool matchBeamToDistance = true; // 빔 길이 자동 맞춤
 
     private enum OrbitCenter
@@ -35,13 +55,13 @@ public class PlayerController : MonoBehaviour
         Sun
     }
 
-    // 현재 회전 중심 상태 (초기: 지구)
-    private OrbitCenter center = OrbitCenter.Earth;
+    // 현재 회전 중심 상태(초기값: 지구)
+    private OrbitCenter _center = OrbitCenter.Earth;
 
-    // 빔 원본 길이(스프라이트 기준, 월드 단위)
-    private float beamBaseLength = 1f;
+    // 빔 기본 길이(스프라이트 원본 길이, 보정용)
+    private float _beamBaseLength = 1f;
 
-    // 거리 외부에서 접근 필요 시를 위한 공개 프로퍼티 (대문자 시작 규칙 준수)
+    // 외부 제어용 거리 프로퍼티(보정 포함)
     public float Distance
     {
         get => distance;
@@ -50,7 +70,7 @@ public class PlayerController : MonoBehaviour
 
     private void Awake()
     {
-        // 하위 오브젝트 자동 참조 (필요 시)
+        // 자식에서 기본 트랜스폼 자동 탐색(없을 경우에만)
         if (earth == null)
         {
             var t = transform.Find("Earth");
@@ -76,21 +96,20 @@ public class PlayerController : MonoBehaviour
 
         if (earth == null || sun == null)
         {
-            Debug.LogWarning("[PlayerController] Earth 또는 Sun 참조가 설정되지 않았습니다. Player 하위에 'Earth', 'Sun' 트랜스폼을 배치하거나 인스펙터에서 지정하세요.");
+            Debug.LogWarning("[PlayerController] Earth 또는 Sun 참조가 설정되지 않았습니다. Player 자식에 'Earth', 'Sun' 오브젝트를 배치했는지 또는 스크립트에서 지정했는지 확인해 주세요.");
         }
 
-        // 빔 기본 길이 캐싱 (스프라이트 피벗이 중앙, 세로 기준)
+        // 빔 기본 길이 캐시(스프라이트의 +Y 방향 길이)
         if (beamRenderer != null && beamRenderer.sprite != null)
         {
-            // 스프라이트의 월드 단위 높이(스케일 1 기준)
-            beamBaseLength = beamRenderer.sprite.bounds.size.y;
-            if (beamBaseLength <= 0f) beamBaseLength = 1f;
+            _beamBaseLength = beamRenderer.sprite.bounds.size.y;
+            if (_beamBaseLength <= 0f) _beamBaseLength = 1f;
         }
     }
 
     private void Start()
     {
-        // 시작 시 거리를 보정하여 배치 (지구 중심 공전)
+        // 시작 시 거리 유지하도록 초기 배치 보정(지구 중심 회전 기준)
         if (earth != null && sun != null)
         {
             Vector3 c = earth.position;
@@ -102,51 +121,51 @@ public class PlayerController : MonoBehaviour
 
     private void Update()
     {
-        // 탭 입력 처리: 마우스/터치
+        // 탭 입력 처리: 중심 전환
         if (IsTap())
         {
             ToggleCenter();
         }
 
-        // 공전 처리: 현재 중심에 따라 반대편 오브젝트를 공전시킨다.
+        // 공전 처리: 현재 중심을 기준으로 반대편 천체 이동
         if (earth == null || sun == null) return;
 
         float angle = orbitSpeed * Time.deltaTime;
 
-        if (center == OrbitCenter.Earth)
+        if (_center == OrbitCenter.Earth)
         {
             Vector3 rel = sun.position - earth.position;
             rel = Quaternion.AngleAxis(angle, orbitAxis) * rel;
-            sun.position = earth.position + rel.normalized * distance; // 거리 유지
+            sun.position = earth.position + rel.normalized * distance;
         }
         else // OrbitCenter.Sun
         {
             Vector3 rel = earth.position - sun.position;
             rel = Quaternion.AngleAxis(angle, orbitAxis) * rel;
-            earth.position = sun.position + rel.normalized * distance; // 거리 유지
+            earth.position = sun.position + rel.normalized * distance;
         }
 
-        // 빔 위치/회전/스케일 갱신
         UpdateBeam();
     }
 
     private void OnValidate()
     {
-        // 인스펙터 값 변경 시 즉시 갱신 (에디터 전용 상황 포함)
+        // 인스펙터 보정(음수 거리 방지)
         if (distance < 0f) distance = 0f;
 
         if (Application.isPlaying) return;
 
-        // 빔 기본 길이 갱신
+        // 에디터에서 빔 길이 캐시 갱신
         if (beamRenderer != null && beamRenderer.sprite != null)
         {
-            beamBaseLength = beamRenderer.sprite.bounds.size.y;
-            if (beamBaseLength <= 0f) beamBaseLength = 1f;
+            _beamBaseLength = beamRenderer.sprite.bounds.size.y;
+            if (_beamBaseLength <= 0f) _beamBaseLength = 1f;
         }
 
+        // 현재 중심 기준으로 반대편 천체를 거리만큼 배치
         if (earth != null && sun != null)
         {
-            if (center == OrbitCenter.Earth)
+            if (_center == OrbitCenter.Earth)
             {
                 Vector3 c = earth.position;
                 Vector3 dir = sun.position - c;
@@ -161,14 +180,13 @@ public class PlayerController : MonoBehaviour
                 earth.position = c + dir.normalized * distance;
             }
 
-            // 에디터에서도 빔 미리보기 갱신
             UpdateBeam();
         }
     }
 
     private bool IsTap()
     {
-        // 모바일 터치 시작 또는 에디터/PC 마우스 클릭을 탭으로 간주
+        // 모바일 터치 Began 또는 PC 마우스 클릭으로 판정
         if (Input.touchCount > 0)
         {
             for (int i = 0; i < Input.touchCount; i++)
@@ -184,44 +202,43 @@ public class PlayerController : MonoBehaviour
     {
         if (earth == null || sun == null) return;
 
-        // 전환 시 현재 위치를 유지하고 다음 프레임부터 새 중심으로 공전
-        center = (center == OrbitCenter.Earth) ? OrbitCenter.Sun : OrbitCenter.Earth;
-        Debug.Log($"[PlayerController] 회전 중심 전환: {(center == OrbitCenter.Earth ? "지구" : "태양")} 기준");
+        // 전환: 현재 기준을 반대로 바꿔 다음 프레임부터 해당 중심으로 공전
+        _center = (_center == OrbitCenter.Earth) ? OrbitCenter.Sun : OrbitCenter.Earth;
+        Debug.Log($"[PlayerController] 회전 중심 전환: {(_center == OrbitCenter.Earth ? "지구" : "태양")} 기준");
     }
 
     /// <summary>
-    /// 빔을 지구-태양 사이에 정확히 배치하고, 세로 스프라이트의 위/아래가 각각 태양/지구에 오도록 회전 및 스케일을 조정한다.
+    /// 빔을 지구-태양 사이에 맞추고, 스프라이트의 원본 길이를 기준으로
+    /// 스케일을 조정해 거리 변화에 따라 자연스럽게 길이를 갱신한다.
     /// </summary>
     private void UpdateBeam()
     {
-        if (beam == null) return;
+        if (beam == null || earth == null || sun == null) return;
 
-        // 거리 및 방향 계산
-        Vector3 a = earth.position; // 지구 (아래쪽에 배치)
-        Vector3 b = sun.position;   // 태양 (위쪽에 배치)
+        // 거리 및 중간 지점 계산
+        Vector3 a = earth.position;
+        Vector3 b = sun.position;
         Vector3 ab = b - a;
         float len = ab.magnitude;
         if (len <= 1e-6f)
         {
-            // 같은 위치일 때는 숨김 처리 혹은 최소 길이 유지
             if (beamRenderer != null) beamRenderer.enabled = false;
             return;
         }
 
         if (beamRenderer != null && !beamRenderer.enabled) beamRenderer.enabled = true;
 
-        // 중점 배치
+        // 위치/회전 설정
         Vector3 mid = a + ab * 0.5f;
         beam.position = mid;
 
-        // 스프라이트의 +Y가 태양 방향을 향하도록 회전
         Vector3 dir = ab / len;
         beam.rotation = Quaternion.FromToRotation(Vector3.up, dir);
 
-        // 스케일 조정: 스프라이트 기본 높이를 len에 맞춘다.
+        // 스케일 조정
         if (matchBeamToDistance)
         {
-            float targetYScale = len / beamBaseLength;
+            float targetYScale = len / _beamBaseLength;
             Vector3 ls = beam.localScale;
             ls.x = beamThickness;
             ls.y = targetYScale;
@@ -229,40 +246,39 @@ public class PlayerController : MonoBehaviour
         }
         else
         {
-            // 길이를 강제하지 않는 경우 두께만 유지
             Vector3 ls = beam.localScale;
             ls.x = beamThickness;
             beam.localScale = ls;
         }
     }
 
-    // 디버그(공전 궤도 기즈모)
-    [Header("디버그(공전 궤도)")]
-    public bool DebugDrawOrbit = true;               // 공전 궤도 원 표시
-    public Color OrbitGizmoColor = Color.yellow;     // 공전 궤도 색상
-    [Range(12, 256)] public int OrbitGizmoSegments = 64; // 세그먼트 수
+    // 디버그/궤도 그리기
+    [Header("디버그/궤도 그리기")]
+    public bool DebugDrawOrbit = true;               // 궤도 라인 표시
+    public Color OrbitGizmoColor = Color.yellow;     // 궤도 라인 색상
+    [Range(12, 256)] public int OrbitGizmoSegments = 64; // 라인 세그먼트 수
 
-    // GC 최소화를 위한 단위 원 캐시
-    private Vector3[] orbitUnitCirclePoints;
-    private int orbitLastSegments;
+    // GC 절감을 위한 캐시
+    private Vector3[] _orbitUnitCirclePoints;
+    private int _orbitLastSegments;
 
-    // 현재 회전 중심 Transform을 외부/디버그에서 확인 가능하도록 제공
-    public Transform CurrentCenter => center == OrbitCenter.Earth ? earth : sun;
-    public bool IsSunCenter => center == OrbitCenter.Sun;
+    // 현재 회전 중심 Transform 및 상태 질의
+    public Transform CurrentCenter => _center == OrbitCenter.Earth ? earth : sun;
+    public bool IsSunCenter => _center == OrbitCenter.Sun;
 
     private void EnsureOrbitUnitCircleCache()
     {
         int seg = Mathf.Clamp(OrbitGizmoSegments, 12, 256);
-        if (orbitUnitCirclePoints == null || orbitLastSegments != seg)
+        if (_orbitUnitCirclePoints == null || _orbitLastSegments != seg)
         {
-            orbitUnitCirclePoints = new Vector3[seg + 1];
+            _orbitUnitCirclePoints = new Vector3[seg + 1];
             float step = Mathf.PI * 2f / seg;
             for (int i = 0; i <= seg; i++)
             {
                 float a = step * i;
-                orbitUnitCirclePoints[i] = new Vector3(Mathf.Cos(a), Mathf.Sin(a), 0f); // XY 평면 단위 원
+                _orbitUnitCirclePoints[i] = new Vector3(Mathf.Cos(a), Mathf.Sin(a), 0f); // XY 평면 단위 원
             }
-            orbitLastSegments = seg;
+            _orbitLastSegments = seg;
         }
     }
 
@@ -271,28 +287,27 @@ public class PlayerController : MonoBehaviour
         if (!DebugDrawOrbit) return;
         if (earth == null || sun == null) return;
 
-        // 반지름: distance 사용 (사용자 요청)
         float r = Mathf.Max(0f, distance);
         if (r <= 0f) return;
 
-        // 중심: 탭 전환 상태(center)에 따라 지구/태양 중 선택
-        Transform cTr = (center == OrbitCenter.Earth) ? earth : sun;
+        Transform cTr = (_center == OrbitCenter.Earth) ? earth : sun;
         if (cTr == null) return;
 
         EnsureOrbitUnitCircleCache();
 
-        // 공전 축에 맞춰 XY 단위 원을 회전시켜 궤도 평면 정합
+        // 공전 축에 맞춘 회전 생성
         Vector3 axis = (orbitAxis.sqrMagnitude > 1e-6f) ? orbitAxis.normalized : Vector3.forward;
         Quaternion rot = Quaternion.FromToRotation(Vector3.forward, axis);
 
         Gizmos.color = OrbitGizmoColor;
         Vector3 centerPos = cTr.position;
 
-        for (int i = 0; i < orbitLastSegments; i++)
+        for (int i = 0; i < _orbitLastSegments; i++)
         {
-            Vector3 p0 = centerPos + rot * (orbitUnitCirclePoints[i] * r);
-            Vector3 p1 = centerPos + rot * (orbitUnitCirclePoints[i + 1] * r);
+            Vector3 p0 = centerPos + rot * (_orbitUnitCirclePoints[i] * r);
+            Vector3 p1 = centerPos + rot * (_orbitUnitCirclePoints[i + 1] * r);
             Gizmos.DrawLine(p0, p1);
         }
     }
 }
+

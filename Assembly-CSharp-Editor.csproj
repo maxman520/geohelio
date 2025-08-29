@@ -51,7 +51,6 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Assets\Editor\SpritePPUSetter128.cs" />
-    <Compile Include="Assets\TutorialInfo\Scripts\Editor\ReadmeEditor.cs" />
     <Compile Include="Assets\Editor\SpriteModeToSingle.cs" />
   </ItemGroup>
   <ItemGroup>

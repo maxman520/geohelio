@@ -75,4 +75,71 @@ chore(git): .gitignore에서 AGENTS.md, WORKLOG.MD 제외
 chore(docs): AGENTS.md에 커밋 메시지 요약 제외 규칙 추가
 
 - 커밋 메시지 작성 시 `WORKLOG.MD` 요약을 참고하되,
-- 생성 후 즉시 삭제되었거나 원상복구되어 실질 변화가 없는 작업은 메시지에서 제외하도록 지침 추가
+ - 생성 후 즉시 삭제되었거나 원상복구되어 실질 변화가 없는 작업은 메시지에서 제외하도록 지침 추가
+
+<!-- COMMIT_BOOKMARK -->
+refactor(serialization,naming): 직렬화 private 필드 명명 규칙 통일(camelCase)
+
+- 규칙 반영: `[SerializeField] private camelCase`로 일괄 변경, 비직렬화 private 필드는 `_camelCase` 유지
+- 안전 마이그레이션: 일부 스크립트에 `FormerlySerializedAs` 추가해 씬/프리팹 참조 보존
+- 변경 파일: `Assets/Scripts/Game/Asteroid.cs`, `Assets/Scripts/Game/GameManager.cs`, `Assets/Scripts/Game/ObjectSpawner.cs`, `Assets/Scripts/Player/PlayerController.cs`, `Assets/Scripts/UI/UIManager.cs`
+- 참고: 코드 내 모든 참조도 함께 갱신하여 컴파일 오류가 없도록 정리
+fix(i18n,comments): GameManager/PlayerController/UIManager 한글 주석·문자열 복구
+
+- 손상된 한글 주석/문자열(모지바케) 복구 및 가독성 개선
+- `GameManager.cs`: 요약 주석/툴팁/로그 한국어 정비, 씬/스포너 안내 문구 정리
+- `PlayerController.cs`: 요약/헤더/툴팁/경고/로그/디버그 주석을 자연스러운 한국어로 재작성
+- `UIManager.cs`: 헤더/경고 로그 한국어 수정 및 간결화
+- 직렬화 안전 위해 필요한 곳에 `FormerlySerializedAs` 보강
+fix(i18n,comments): ObjectSpawner 한글 주석·문자열 복구
+
+- 파일 재작성 수준으로 모지바케 복구 및 주석 가독성 개선
+- 스폰 규칙/툴팁/경고/로그 문자열을 자연스러운 한국어로 정리
+- 기존 로직과 필드명은 유지(camelCase), 기능 변화 없음
+refactor(asteroid): 충돌 대신 트리거 사용 및 툴팁 추가
+
+- OnCollisionEnter2D 제거, OnTriggerEnter2D만 사용하도록 정리
+- `fallbackExplodeDuration`에 한국어 툴팁 추가(애니메이터 태그 부재 시 대체 대기 시간)
+- 파일: `Assets/Scripts/Game/Asteroid.cs`
+chore(docs): 커밋 완료 시 북마크 즉시 기록 지침 추가 및 북마크 최신화
+
+- AGENTS.md에 '커밋 완료 즉시 WORKLOG 끝에 북마크 남기기' 규칙 추가
+- 본 작업 후 문서 끝에 커밋 북마크(`<!-- COMMIT_BOOKMARK -->`)를 최신 위치로 갱신
+chore(git): post-commit 훅 추가 — 커밋 직후 WORKLOG 북마크 자동 최신화
+
+- 파일 추가: `.git/hooks/post-commit`
+- 동작: 기존 북마크 라인을 제거하고 문서 끝에 `<!-- COMMIT_BOOKMARK -->` 한 줄 추가
+- 비고: 후속 커밋에 포함되지는 않으며 워킹 트리에만 반영
+chore(docs): AGENTS.md 북마크 지침 간결화
+
+- 북마크 수동 추가/갱신 지침 제거 (post-commit 훅 자동화 전제)
+- 커밋 메시지 작성 시 북마크 이후~끝 요약 활용 규칙만 유지
+feat(spawner,core): ObjectSpawner 초기화/규칙 구현 및 GameManager 연동
+
+- 요구사항 반영: 탭으로 시작 로직 제거, Initialize 시 기존 소행성 전부 삭제 후 초기 개수 생성 및 즉시 스폰 시작
+- 규칙 추가: 일반 스폰 시 플레이어 공전 원 내부 금지(Initialize 초기 생성에는 미적용), 반경 0.5 유닛 이내 중복 배치 금지
+- 관리 방식 개선: 스폰된 소행성 트래킹(List) 및 파괴 통지용 `SpawnedAsteroid` 컴포넌트 추가로 일관된 정리 처리
+- GameManager 연동: `ToReady()`에서 `ObjectSpawner.Initialize()` 호출로 씬 진입/Retry 시 초기화 및 스폰 시작, `StartGame()`의 스폰 시작 호출 제거
+- 파일 추가: `Assets/Scripts/Game/SpawnedAsteroid.cs`
+- 파일 수정: `Assets/Scripts/Game/ObjectSpawner.cs`, `Assets/Scripts/Game/GameManager.cs`
+refactor(style): 명명 규칙 지침 추가 및 코드 통일(_camelCase)
+
+- AGENTS.md 갱신: 지역/매개변수 `camelCase`, 클래스·메서드·속성·public 멤버 `PascalCase`, private 필드 `_camelCase` 규칙 명시 강화
+- 코드 정리: 직렬화 private 필드를 `_camelCase`로 통일하고 `FormerlySerializedAs`로 인스펙터 값 보존
+- 변경 파일: `GameManager.cs`, `ObjectSpawner.cs`, `PlayerController.cs`, `UIManager.cs`
+feat(gameplay,pool): 소행성 폭발/풀링 도입
+
+- 소행성-플레이어 충돌 시 애니메이션 트리거("explode") 재생 후 종료까지 대기, 이후 제거 대신 스포너 풀로 반환
+- `Asteroid` 컴포넌트 추가(충돌/폭발/풀 반환 관리, UniTask 사용)
+- `ObjectSpawner`에 오브젝트 풀(Queue) 적용: 생성 시 풀 재사용, 초기화/정리 시 파괴 대신 비활성화 후 풀로 반환
+- 초기 생성 로직/정리 로직을 풀 기반 동작으로 변경하여 생성/제거 비용 절감
+- 파일 추가: `Assets/Scripts/Game/Asteroid.cs`
+refactor(pool): SpawnedAsteroid 기능 Asteroid로 통합 및 제거
+
+- 파괴 통지 마커(`SpawnedAsteroid`) 역할을 `Asteroid` 컴포넌트 내에서 디스폰 호출로 대체
+- 파일 삭제: `Assets/Scripts/Game/SpawnedAsteroid.cs`
+chore(docs): AGENTS.md 지침에 command approval 생략 규칙 명시
+
+- 파괴적 작업(파일/디렉터리 삭제 등) 제외, 파일 읽기/폴더 탐색 등 비파괴 작업은 승인 없이 즉시 실행
+- 코딩 작업(스크립트 추가·수정)은 승인 없이 즉시 실행
+- 위 지침을 AGENTS.md의 Agent-Specific Instructions 섹션에 추가
