@@ -22,28 +22,28 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
     }
 
     [Header("참조")]
-    [FormerlySerializedAs("player")]
-    [FormerlySerializedAs("_player")]
     [SerializeField] private PlayerController player; // 플레이어 컨트롤러 참조
-    [FormerlySerializedAs("asteroidSpawner")]
-    [FormerlySerializedAs("_asteroidSpawner")]
     [SerializeField] private ObjectSpawner asteroidSpawner; // 소행성/장애물 스포너
 
     [Header("설정")]
     [Tooltip("게임 시작 시 자동으로 Ready 상태로 전환할지 여부")]
-    [FormerlySerializedAs("autoReadyOnStart")]
-    [FormerlySerializedAs("_autoReadyOnStart")]
     [SerializeField] private bool autoReadyOnStart = true;
+    [Tooltip("Ready 상태에서 첫 중심 전환 이벤트로 게임을 시작할지 여부")]
+    [SerializeField] private bool startOnFirstCenterToggle = true;
     [Tooltip("초기 생명 수")]
-    [FormerlySerializedAs("initialLives")]
-    [FormerlySerializedAs("_initialLives")]
     [SerializeField] private int initialLives = 1;
+    [Header("게임오버 조건")]
+    [Tooltip("플레이어의 현재 회전 중심이 스폰 영역(원점 중심 원)을 벗어나면 게임오버 처리")]
+    [SerializeField] private bool gameOverWhenCenterOut = true;
+    [Tooltip("스폰 반경 대비 추가 허용 마진(월드 단위). 이 값을 더 넘어가면 게임오버")]
+    [SerializeField] private float centerOutMargin = 0.5f;
 
     // 진행 상태/통계
     private GameState _state = GameState.Init;
     private int _score;
     private int _lives;
     private float _elapsedTime;
+    private int _comboCount; // 동일 중심에서 연속 파괴 콤보 수(0부터 시작)
 
     // 이벤트 훅(UI/스포너/외부에서 구독)
     public event Action<GameState> OnStateChanged;   // 상태 변경 알림
@@ -73,10 +73,17 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
             }
         }
 
+        // Player 중심 전환 이벤트 구독(있을 경우)
+        if (player != null)
+        {
+            player.OnCenterToggled += OnPlayerCenterToggled;
+        }
+
         // 기본 값 초기화
         _lives = Mathf.Max(0, initialLives);
         _score = 0;
         _elapsedTime = 0f;
+        _comboCount = 0;
         SetState(GameState.Init);
     }
 
@@ -94,13 +101,37 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
         if (_state == GameState.Playing)
         {
             _elapsedTime += Time.deltaTime;
+            CheckCenterBoundsAndMaybeGameOver();
         }
 
-        // Ready 상태에서 탭 입력 시 게임 시작
-        if (_state == GameState.Ready && IsTap())
+        // Ready 상태에서 탭 입력 시 게임 시작(이벤트 시작 비활성 시에만)
+        if (_state == GameState.Ready && !startOnFirstCenterToggle && IsTap())
         {
             StartGame();
         }
+    }
+
+    protected override void OnDestroy()
+    {
+        // 기본 싱글톤 정리 호출
+        base.OnDestroy();
+
+        if (player != null)
+        {
+            player.OnCenterToggled -= OnPlayerCenterToggled;
+        }
+    }
+
+    // 플레이어 중심 전환 이벤트: Ready 상태이고 정책이 허용되면 게임 시작
+    private void OnPlayerCenterToggled(bool isSun)
+    {
+        if (!startOnFirstCenterToggle) return;
+        if (_state == GameState.Ready)
+        {
+            StartGame();
+        }
+        // 공전 중심이 바뀌면 콤보 초기화
+        _comboCount = 0;
     }
 
     // 상태 전환 공통 처리
@@ -123,6 +154,7 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
         // 점수/시간 초기화 후 Ready 진입
         _elapsedTime = 0f;
         _score = 0;
+        _comboCount = 0;
         OnScoreChanged?.Invoke(_score);
         SetState(GameState.Ready);
 
@@ -161,6 +193,7 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
     {
         if (_state == GameState.GameOver) return;
         SetState(GameState.GameOver);
+        _comboCount = 0; // 게임 종료 시 콤보 초기화
 
         // 스폰 중지
         if (asteroidSpawner == null)
@@ -177,6 +210,18 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
         if (amount == 0) return;
         _score = Mathf.Max(0, _score + amount);
         OnScoreChanged?.Invoke(_score);
+    }
+
+    /// <summary>
+    /// 소행성 파괴 보상: 현재 공전 중심 유지 중 연속 파괴에 따라 10, 20, 30... 가산.
+    /// 중심이 변경되면 ToReady/OnCenterToggled에서 콤보가 0으로 리셋된다.
+    /// </summary>
+    public void AwardAsteroidScore()
+    {
+        int multiplier = _comboCount + 1; // 최초 1배(10점)부터 시작
+        int amount = 10 * multiplier;
+        AddScore(amount);
+        _comboCount++;
     }
 
     public void LoseLife(int amount = 1)
@@ -239,5 +284,38 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
         var active = SceneManager.GetActiveScene();
         SceneManager.LoadScene(active.name);
     }
-}
 
+    // 회전 중심이 스폰 영역을 벗어났는지 확인하여 필요 시 게임오버 처리
+    private void CheckCenterBoundsAndMaybeGameOver()
+    {
+        if (!gameOverWhenCenterOut) return;
+        var centerTr = GetCurrentOrbitCenter();
+        if (centerTr == null) return;
+
+        // 스폰 반경 가져오기(가능하면 스포너에서, 없으면 카메라로 계산)
+        if (asteroidSpawner == null)
+            asteroidSpawner = FindFirstObjectByType<ObjectSpawner>();
+
+        float baseRadius = 0f;
+        if (asteroidSpawner != null)
+        {
+            baseRadius = asteroidSpawner.GetSpawnRadius();
+        }
+        else
+        {
+            var cam = Camera.main != null ? Camera.main : FindFirstObjectByType<Camera>();
+            if (cam != null && cam.orthographic)
+                baseRadius = cam.orthographicSize * cam.aspect;
+            else
+                baseRadius = 6f; // 폴백
+        }
+
+        float limit = baseRadius + Mathf.Max(0f, centerOutMargin);
+        Vector2 p = centerTr.position;
+        if (p.sqrMagnitude > limit * limit)
+        {
+            Debug.Log("[GameManager] 회전 중심이 스폰 영역을 벗어났습니다. 게임오버 처리");
+            EndGame();
+        }
+    }
+}

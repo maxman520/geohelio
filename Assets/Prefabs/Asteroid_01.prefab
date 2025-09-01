@@ -174,7 +174,7 @@ Rigidbody2D:
   m_Interpolate: 0
   m_SleepingMode: 1
   m_CollisionDetection: 0
-  m_Constraints: 4
+  m_Constraints: 0
 --- !u!58 &814028818377463502
 CircleCollider2D:
   m_ObjectHideFlags: 0
@@ -225,6 +225,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Asteroid
   animator: {fileID: 7657965072649599053}
   col: {fileID: 814028818377463502}
+  spriteRenderers: []
   explodeTrigger: explode
   explodeStateTag: Explode
   fallbackExplodeDuration: 0.6
+  fadeInOnSpawn: 1
+  fadeInDuration: 0.25
+  rotateOnSpawn: 1
+  angularSpeedRange: {x: 30, y: 180}

@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.Serialization;
 
@@ -57,6 +58,9 @@ public class PlayerController : MonoBehaviour
 
     // 현재 회전 중심 상태(초기값: 지구)
     private OrbitCenter _center = OrbitCenter.Earth;
+
+    // 이벤트: 중심 전환 시 1회 발행(true=태양 기준, false=지구 기준)
+    public event Action<bool> OnCenterToggled;
 
     // 빔 기본 길이(스프라이트 원본 길이, 보정용)
     private float _beamBaseLength = 1f;
@@ -121,10 +125,27 @@ public class PlayerController : MonoBehaviour
 
     private void Update()
     {
-        // 탭 입력 처리: 중심 전환
+        // 탭 입력 처리: 중심 전환 (게임오버 시 클릭 감지 중단)
         if (IsTap())
         {
-            ToggleCenter();
+            var gm = GameManager.Instance;
+            if (gm != null && gm.State == GameManager.GameState.GameOver)
+            {
+                // 게임오버 상태에서는 입력을 무시
+            }
+            else
+            {
+                // 탭 → 중심 전환 후 이벤트 발행
+                ToggleCenter();
+                try
+                {
+                    OnCenterToggled?.Invoke(IsSunCenter);
+                }
+                catch (Exception e)
+                {
+                    Debug.LogWarning($"[PlayerController] 중심 전환 이벤트 처리 중 예외: {e.Message}");
+                }
+            }
         }
 
         // 공전 처리: 현재 중심을 기준으로 반대편 천체 이동
@@ -310,4 +331,3 @@ public class PlayerController : MonoBehaviour
         }
     }
 }
-

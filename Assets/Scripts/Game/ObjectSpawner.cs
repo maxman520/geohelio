@@ -22,6 +22,8 @@ public class ObjectSpawner : MonoBehaviour
     [Header("규칙")]
     [SerializeField] private float minSeparation = 0.5f;      // 최소 간격 0.5 유지(규칙 5)
     [SerializeField] private float orbitEpsilon = 0.001f;     // 공전 원 내부 판정 여유값
+    [Tooltip("카메라 가시 영역 밖에서 추가로 허용할 여유 반경(월드 단위)")]
+    [SerializeField] private float despawnMargin = 0.75f;     // 화면 경계 밖 여유 공간. 디스폰 마진
 
     // 내부 진행 상태
     private float _timer;
@@ -31,7 +33,6 @@ public class ObjectSpawner : MonoBehaviour
     private PlayerController _player;
     private Camera _camera;
     private bool _startSignalReceived;           // 시작 신호(첫 중심 전환) 수신 여부
-    private bool _lastIsSunCenter;               // 시작 신호 감지를 위한 이전 중심 상태 스냅샷
     private bool _initializedAfterReset;         // Initialize 이후 상태 플래그
 
     private void Awake()
@@ -50,24 +51,26 @@ public class ObjectSpawner : MonoBehaviour
             Debug.LogWarning("[ObjectSpawner] 카메라를 찾지 못했습니다. 스폰 반경은 설정 값(spawnRadius)을 사용합니다.");
         }
 
-        // 시작 신호 폴백 감지를 위한 초기 스냅샷
-        _lastIsSunCenter = _player != null && _player.IsSunCenter;
+        // 플레이어 중심 전환 이벤트 구독(가능 시)
+        if (_player != null)
+        {
+            _player.OnCenterToggled += OnPlayerCenterToggled;
+        }
+    }
+
+    private void OnDestroy()
+    {
+        if (_player != null)
+        {
+            _player.OnCenterToggled -= OnPlayerCenterToggled;
+        }
     }
 
     // GameManager 이벤트에 의존하지 않고, 실제 회전 중심 전환(탭)에 의해만 시작되도록 한다.
 
     private void Update()
     {
-        // 시작 전에는 플레이어의 중심 전환을 감지해 시작 신호로 사용(폴백)
-        if (_initializedAfterReset && !_startSignalReceived && _player != null)
-        {
-            bool cur = _player.IsSunCenter;
-            if (cur != _lastIsSunCenter)
-            {
-                _lastIsSunCenter = cur;
-                HandleStartSignal();
-            }
-        }
+        // 이벤트 기반으로 시작 신호를 처리하므로 폴링 제거
 
         if (!_running) return;
         _timer += Time.deltaTime;
@@ -96,8 +99,6 @@ public class ObjectSpawner : MonoBehaviour
         _startSignalReceived = false;
         _running = false; // 주기 스폰은 보류
         _timer = 0f;
-        // 스냅샷 갱신(Initialize 이후의 첫 전환만 유효)
-        _lastIsSunCenter = _player != null && _player.IsSunCenter;
         _initializedAfterReset = true;
         Debug.Log("[ObjectSpawner] 초기화 완료: 초기 배치 생성 후 시작 신호(첫 중심 전환) 대기");
     }
@@ -111,6 +112,18 @@ public class ObjectSpawner : MonoBehaviour
         _running = true;
         _timer = 0f;
         Debug.Log("[ObjectSpawner] 시작 신호 감지: 주기 스폰 시작");
+    }
+
+    // 플레이어 중심 전환 이벤트 처리(첫 신호만 처리 후 구독 해제)
+    private void OnPlayerCenterToggled(bool isSun)
+    {
+        if (!_initializedAfterReset || _startSignalReceived) return;
+        HandleStartSignal();
+        // 첫 신호 처리 후 더 이상 필요 없으므로 구독 해제
+        if (_player != null)
+        {
+            _player.OnCenterToggled -= OnPlayerCenterToggled;
+        }
     }
 
     /// <summary>
@@ -196,6 +209,29 @@ public class ObjectSpawner : MonoBehaviour
         }
         // 폴백: 설정된 spawnRadius 사용(원근 카메라 또는 미발견 시)
         return spawnRadius;
+    }
+
+    // 외부 접근용: 스폰 반경(월드 단위) 반환
+    public float GetSpawnRadius()
+    {
+        return GetSpawnRadiusWorld();
+    }
+
+    /// <summary>
+    /// 카메라 화면 반경(가로 절반 길이) + 여유 마진 기준으로 바깥인지 판정한다.
+    /// 중심은 카메라의 현재 XY 위치를 사용하며, 카메라가 없으면 월드 원점을 사용한다.
+    /// </summary>
+    public bool IsOutsideDespawnBounds(Vector3 worldPos)
+    {
+        Vector2 center = Vector2.zero;
+        if (_camera != null)
+        {
+            var cp = _camera.transform.position;
+            center = new Vector2(cp.x, cp.y);
+        }
+        float r = GetSpawnRadiusWorld() + Mathf.Max(0f, despawnMargin);
+        Vector2 d = new Vector2(worldPos.x, worldPos.y) - center;
+        return d.sqrMagnitude > r * r;
     }
 
     private void SpawnAt(Vector3 pos)
@@ -302,6 +338,16 @@ public class ObjectSpawner : MonoBehaviour
         // 월드 원점 마커(작은 점)
         Gizmos.color = new Color(0.2f, 0.8f, 1f, 0.9f); // 하늘색: 월드 원점
         Gizmos.DrawSphere(Vector3.zero, Mathf.Max(0.05f, radius * 0.02f));
+
+        // 디스폰 경계(카메라 중심 + 반경 + 마진)
+        if (TryGetGizmoDespawnCircle(out Vector3 c, out float r))
+        {
+            Gizmos.color = new Color(1f, 0.5f, 0f, 0.9f); // 주황색: 디스폰 경계
+            Gizmos.DrawWireSphere(c, r);
+            // 카메라 중심 마커
+            Gizmos.color = new Color(1f, 0.8f, 0.2f, 0.9f);
+            Gizmos.DrawSphere(c, Mathf.Max(0.04f, r * 0.015f));
+        }
     }
 
     // 에디터/플레이 공통: 기즈모 반경 계산을 안정화
@@ -339,5 +385,45 @@ public class ObjectSpawner : MonoBehaviour
         }
 
         return spawnRadius;
+    }
+
+    // 기즈모용 디스폰 경계 계산(카메라 중심 + 반경 + 마진)
+    private bool TryGetGizmoDespawnCircle(out Vector3 center, out float radius)
+    {
+        center = Vector3.zero;
+        radius = 0f;
+
+        Camera cam = null;
+        if (Application.isPlaying)
+        {
+            cam = _camera;
+        }
+        else
+        {
+            cam = Camera.main != null ? Camera.main : FindFirstObjectByType<Camera>();
+        }
+
+        if (cam == null)
+        {
+            // 카메라가 없으면 원점 기준으로라도 표시
+            center = Vector3.zero;
+            radius = GetGizmoSpawnRadius() + Mathf.Max(0f, despawnMargin);
+            return true;
+        }
+
+        center = cam.transform.position;
+        // Z는 0으로 맞춰 2D 평면에 그린다
+        center.z = 0f;
+        float baseR;
+        if (cam.orthographic)
+        {
+            baseR = cam.orthographicSize * cam.aspect;
+        }
+        else
+        {
+            baseR = GetGizmoSpawnRadius(); // 원근 카메라면 대략적인 값 사용
+        }
+        radius = baseR + Mathf.Max(0f, despawnMargin);
+        return true;
     }
 }

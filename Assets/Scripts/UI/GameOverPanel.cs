@@ -2,7 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
-// 게임오버 창 제어 스크립트: 점수 표시와 다시하기 버튼만 처리(TextMeshPro 사용)
+// 게임오버 창 제어 스크립트: 점수 표시와 다시하기 버튼 처리(TextMeshPro 사용)
 public class GameOverPanel : MonoBehaviour
 {
     [Header("참조")]
@@ -39,4 +39,3 @@ public class GameOverPanel : MonoBehaviour
         if (ui != null) ui.RequestRetry();
     }
 }
-
