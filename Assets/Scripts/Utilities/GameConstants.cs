@@ -17,6 +17,6 @@ public static class GameConstants
         // 필요 시 애니메이터 트리거/상태 태그 정의
         public const string ExplodeTrigger = "explode";
         public const string ExplodeStateTag = "Explode";
+        public const string PlayerHurtState = "Hurt";
     }
 }
-

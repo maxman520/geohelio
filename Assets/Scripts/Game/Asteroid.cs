@@ -30,6 +30,10 @@ public class Asteroid : MonoBehaviour
     [Tooltip("스폰 페이드 인 시간(초)")]
     [SerializeField] private float fadeInDuration = 0.25f;
 
+    [Header("타입")]
+    [Tooltip("장애물 소행성 여부(점수 미지급, 플레이어 Hurt 연출)")]
+    [SerializeField] private bool isObstacle = false;
+
     [Header("부유감(드리프트)")]
     [Tooltip("스폰 후 무작위 방향으로 천천히 이동(부유감)")]
     [SerializeField] private bool driftOnSpawn = true;
@@ -111,6 +115,18 @@ public class Asteroid : MonoBehaviour
         // 태그 비교로 플레이어 판정 (콜라이더 자체 또는 루트 오브젝트)
         if (other.CompareTag(GameConstants.Tags.Player) || other.transform.root.CompareTag(GameConstants.Tags.Player))
         {
+            // 장애물인 경우 플레이어 Hurt 애니메이션 재생
+            if (isObstacle)
+            {
+                var playerRoot = other.transform.root != null ? other.transform.root.gameObject : other.gameObject;
+                var playerAnimator = playerRoot.GetComponent<Animator>();
+                if (playerAnimator == null)
+                    playerAnimator = playerRoot.GetComponentInChildren<Animator>();
+                if (playerAnimator != null)
+                {
+                    playerAnimator.Play(GameConstants.Anim.PlayerHurtState, 0, 0f);
+                }
+            }
             ExplodeAsync().Forget();
         }
     }
@@ -128,22 +144,25 @@ public class Asteroid : MonoBehaviour
             animator.SetTrigger(explodeTrigger);
         }
 
-        // 점수 지급 타이밍을 '애니메이션 트리거 직후'로 조정하여 체감 지연을 줄임
-        try
+        // 점수 지급/팝업: 장애물이 아닌 경우에만 수행
+        if (!isObstacle)
         {
-            int amount = 0;
-            if (GameManager.Instance != null)
+            try
             {
-                amount = GameManager.Instance.AwardAsteroidScore();
+                int amount = 0;
+                if (GameManager.Instance != null)
+                {
+                    amount = GameManager.Instance.AwardAsteroidScore();
+                }
+                if (amount > 0)
+                {
+                    _spawner?.ShowScorePopup(amount, transform.position);
+                }
             }
-            if (amount > 0)
+            catch (Exception e)
             {
-                _spawner?.ShowScorePopup(amount, transform.position);
+                Debug.LogWarning($"[Asteroid] 점수 추가/팝업 처리 중 예외: {e.Message}");
             }
-        }
-        catch (Exception e)
-        {
-            Debug.LogWarning($"[Asteroid] 점수 추가/팝업 처리 중 예외: {e.Message}");
         }
 
         // 상태 전이 프레임 반영
@@ -270,5 +289,11 @@ public class Asteroid : MonoBehaviour
                 return;
             }
         }
+    }
+
+    // 외부에서 장애물 플래그 설정(스포너에서 지정)
+    public void SetAsObstacle(bool value)
+    {
+        isObstacle = value;
     }
 }

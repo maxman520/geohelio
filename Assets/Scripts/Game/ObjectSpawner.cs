@@ -29,6 +29,16 @@ public class ObjectSpawner : MonoBehaviour
     [Tooltip("카메라 가시 영역 밖에서 추가로 허용할 여유 반경(월드 단위)")]
     [SerializeField] private float despawnMargin = 0.75f;     // 화면 경계 밖 여유 공간. 디스폰 마진
 
+    [Header("장애물 소행성")]
+    [Tooltip("장애물 소행성 프리팹(일반 소행성과 다른 프리팹 사용)")]
+    [SerializeField] private GameObject obstacleAsteroidPrefab;
+    [Tooltip("장애물 소행성 스폰 간격(초)")]
+    [SerializeField] private float obstacleSpawnInterval = 2.5f;
+    [Tooltip("장애물 소행성 최소 간격(서로 간)")]
+    [SerializeField] private float obstacleMinSeparation = 3f;
+    [Tooltip("장애물 스폰 단계 지속 시간(초). 각 단계별 최대 동시 개수를 결정")]
+    [SerializeField] private float obstacleStageDuration = 30f;
+
     [Header("점수 팝업(통합)")]
     [Tooltip("점수 팝업 프리팹(월드 공간 TextMeshPro 권장)")]
     [SerializeField] private GameObject scorePopupPrefab;
@@ -38,9 +48,12 @@ public class ObjectSpawner : MonoBehaviour
 
     // 내부 진행 상태
     private float _timer;
+    private float _obstacleTimer;
     private bool _running;
     private readonly List<Transform> _spawned = new List<Transform>(); // 관리 중인 소행성 목록
     private readonly Queue<GameObject> _pool = new Queue<GameObject>(); // 풀(비활성 대기)
+    private readonly List<Transform> _spawnedObstacles = new List<Transform>(); // 장애물 소행성 목록
+    private readonly Queue<GameObject> _obstaclePool = new Queue<GameObject>(); // 장애물 풀
     private PlayerController _player;
     private Camera _camera;
     private bool _startSignalReceived;           // 시작 신호(첫 중심 전환) 수신 여부
@@ -85,6 +98,14 @@ public class ObjectSpawner : MonoBehaviour
                 UnityEngine.Debug.LogWarning("[ObjectSpawner] asteroidPrefab에 Asteroid 컴포넌트가 없습니다. 런타임 스폰이 취소될 수 있습니다.", asteroidPrefab);
             }
         }
+        if (obstacleAsteroidPrefab != null)
+        {
+            var hasAsteroid2 = obstacleAsteroidPrefab.GetComponent<Asteroid>() != null;
+            if (!hasAsteroid2)
+            {
+                UnityEngine.Debug.LogWarning("[ObjectSpawner] obstacleAsteroidPrefab에 Asteroid 컴포넌트가 없습니다. 런타임 스폰이 취소될 수 있습니다.", obstacleAsteroidPrefab);
+            }
+        }
 
         if (spawnInterval < 0.05f) spawnInterval = 0.05f;
         if (maxAlive < 0) maxAlive = 0;
@@ -93,6 +114,9 @@ public class ObjectSpawner : MonoBehaviour
         if (minSeparation < 0f) minSeparation = 0f;
         if (orbitEpsilon < 0f) orbitEpsilon = 0f;
         if (despawnMargin < 0f) despawnMargin = 0f;
+        if (obstacleSpawnInterval < 0.05f) obstacleSpawnInterval = 0.05f;
+        if (obstacleMinSeparation < 0f) obstacleMinSeparation = 0f;
+        if (obstacleStageDuration < 1f) obstacleStageDuration = 1f;
     }
 #endif
 
@@ -125,6 +149,14 @@ public class ObjectSpawner : MonoBehaviour
             _timer = 0f;
             TrySpawn(ignoreOrbitRule: false);
         }
+
+        // 장애물 스폰 타이머
+        _obstacleTimer += Time.deltaTime;
+        if (_obstacleTimer >= obstacleSpawnInterval)
+        {
+            _obstacleTimer = 0f;
+            TrySpawnObstacle();
+        }
     }
 
     /// <summary>
@@ -145,6 +177,7 @@ public class ObjectSpawner : MonoBehaviour
         _startSignalReceived = false;
         _running = false; // 주기 스폰은 보류
         _timer = 0f;
+        _obstacleTimer = 0f;
         _initializedAfterReset = true;
         Debug.Log("[ObjectSpawner] 초기화 완료: 초기 배치 생성 후 시작 신호(첫 중심 전환) 대기");
     }
@@ -209,6 +242,92 @@ public class ObjectSpawner : MonoBehaviour
             }
         }
         // 유효 위치를 찾지 못한 경우(드문 상황)
+    }
+
+    // 장애물 소행성 스폰
+    private void TrySpawnObstacle()
+    {
+        if (obstacleAsteroidPrefab == null) return;
+        CleanupObstacleList();
+
+        int maxObstacles = GetObstacleMaxAlive();
+        if (_spawnedObstacles.Count >= maxObstacles) return;
+
+        const int kMaxTries = 24;
+        for (int t = 0; t < kMaxTries; t++)
+        {
+            if (TryGetObstacleSpawnPosition(out Vector3 pos))
+            {
+                SpawnObstacleAt(pos);
+                return;
+            }
+        }
+    }
+
+    private bool TryGetObstacleSpawnPosition(out Vector3 pos)
+    {
+        Vector3 c = Vector3.zero;
+        float r = GetSpawnRadiusWorld();
+        Vector2 rnd = Random.insideUnitCircle * r;
+        pos = c + new Vector3(rnd.x, rnd.y, 0f);
+
+        // 플레이어 공전 원 내부 금지 규칙은 동일 적용
+        if (_player != null && _player.CurrentCenter != null)
+        {
+            Vector3 oc = _player.CurrentCenter.position;
+            float orbitR = Mathf.Max(0f, _player.Distance);
+            float d2 = (pos - oc).sqrMagnitude;
+            if (d2 < (orbitR - orbitEpsilon) * (orbitR - orbitEpsilon))
+            {
+                return false;
+            }
+        }
+
+        // 장애물 간 최소 간격 3
+        float minSep2 = obstacleMinSeparation * obstacleMinSeparation;
+        for (int i = 0; i < _spawnedObstacles.Count; i++)
+        {
+            var tr = _spawnedObstacles[i];
+            if (tr == null) continue;
+            if ((tr.position - pos).sqrMagnitude < minSep2)
+                return false;
+        }
+
+        // 일반 소행성과의 최소 간격은 일반 소행성 규칙(minSeparation)을 따른다
+        float generalSep2 = minSeparation * minSeparation;
+        for (int i = 0; i < _spawned.Count; i++)
+        {
+            var tr = _spawned[i];
+            if (tr == null) continue;
+            if ((tr.position - pos).sqrMagnitude < generalSep2)
+                return false;
+        }
+
+        return true;
+    }
+
+    private void SpawnObstacleAt(Vector3 pos)
+    {
+        var go = GetFromObstaclePool();
+        go.transform.SetParent(transform, false);
+        go.transform.position = pos;
+
+        float z = Random.Range(0f, 360f);
+        go.transform.rotation = Quaternion.Euler(0f, 0f, z);
+        go.SetActive(true);
+
+        var asteroid = go.GetComponent<Asteroid>();
+        if (asteroid == null)
+        {
+            Debug.LogError("[ObjectSpawner] 장애물 프리팹에 Asteroid 컴포넌트가 없습니다. 스폰을 취소합니다.");
+            InternalObstacleDespawn(go);
+            return;
+        }
+        asteroid.Initialize(this);
+        asteroid.SetAsObstacle(true);
+        asteroid.ResetForSpawn();
+
+        _spawnedObstacles.Add(go.transform);
     }
 
     // 스폰 위치 생성 규칙 적용
@@ -422,6 +541,16 @@ public class ObjectSpawner : MonoBehaviour
             InternalDespawn(tr.gameObject);
         }
         _spawned.Clear();
+
+        // 장애물도 동일 처리
+        CleanupObstacleList();
+        for (int i = _spawnedObstacles.Count - 1; i >= 0; i--)
+        {
+            var tr = _spawnedObstacles[i];
+            if (tr == null) continue;
+            InternalObstacleDespawn(tr.gameObject);
+        }
+        _spawnedObstacles.Clear();
     }
 
     // 목록 내 null 항목 정리
@@ -433,19 +562,40 @@ public class ObjectSpawner : MonoBehaviour
         }
     }
 
+    private void CleanupObstacleList()
+    {
+        for (int i = _spawnedObstacles.Count - 1; i >= 0; i--)
+        {
+            if (_spawnedObstacles[i] == null) _spawnedObstacles.RemoveAt(i);
+        }
+    }
+
     // 소행성이 파괴될 때: 목록에서 제거
     public void NotifyDestroyed(Transform tr)
     {
         if (tr == null) return;
         _spawned.Remove(tr);
+        _spawnedObstacles.Remove(tr);
     }
 
     // 외부(소행성)에서 종료 요청: 풀로 반환
     public void Despawn(Transform tr)
     {
         if (tr == null) return;
-        InternalDespawn(tr.gameObject);
-        _spawned.Remove(tr);
+        var go = tr.gameObject;
+        // 어떤 풀인지 구분하여 반환
+        if (_spawned.Remove(tr))
+        {
+            InternalDespawn(go);
+            return;
+        }
+        if (_spawnedObstacles.Remove(tr))
+        {
+            InternalObstacleDespawn(go);
+            return;
+        }
+        // 목록에 없으면 일반 풀로 반환(폴백)
+        InternalDespawn(go);
     }
 
     private GameObject GetFromPool()
@@ -458,12 +608,42 @@ public class ObjectSpawner : MonoBehaviour
         return Instantiate(asteroidPrefab);
     }
 
+    private GameObject GetFromObstaclePool()
+    {
+        if (_obstaclePool.Count > 0)
+        {
+            return _obstaclePool.Dequeue();
+        }
+        return Instantiate(obstacleAsteroidPrefab);
+    }
+
     private void InternalDespawn(GameObject go)
     {
         if (go == null) return;
         go.SetActive(false);
         go.transform.SetParent(transform, false);
         _pool.Enqueue(go);
+    }
+
+    private void InternalObstacleDespawn(GameObject go)
+    {
+        if (go == null) return;
+        go.SetActive(false);
+        go.transform.SetParent(transform, false);
+        _obstaclePool.Enqueue(go);
+    }
+
+    // 플레이어 생존 시간에 따른 장애물 최대 동시 개수(1단계:2, 2단계:3, 3단계+:4)
+    private int GetObstacleMaxAlive()
+    {
+        float t = 0f;
+        var gm = GameManager.Instance;
+        if (gm != null) t = gm.ElapsedTime;
+        float stageDur = Mathf.Max(1f, obstacleStageDuration);
+        int stage = Mathf.FloorToInt(t / stageDur) + 1; // 1부터 시작
+        if (stage <= 1) return 2;
+        if (stage == 2) return 3;
+        return 4; // 3단계 이상
     }
 
     private void OnDrawGizmos()

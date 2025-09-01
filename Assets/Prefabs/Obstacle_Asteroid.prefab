@@ -80,7 +80,7 @@ SpriteRenderer:
   m_SortingLayer: 2
   m_SortingOrder: 0
   m_Sprite: {fileID: 4019285326129596977, guid: a09e136a4d562d74c98169e6f486ab0b, type: 3}
-  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_Color: {r: 1, g: 0.5019608, b: 0.5019608, a: 1}
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
@@ -104,7 +104,7 @@ GameObject:
   - component: {fileID: 814028818377463502}
   - component: {fileID: 5513525011849301436}
   m_Layer: 0
-  m_Name: Asteroid_01
+  m_Name: Obstacle_Asteroid
   m_TagString: Object
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -225,7 +225,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Asteroid
   animator: {fileID: 7657965072649599053}
   col: {fileID: 814028818377463502}
-  rb2d: {fileID: 4213377337135792466}
+  rb2d: {fileID: 0}
   spriteRenderers: []
   explodeTrigger: explode
   explodeStateTag: Explode
