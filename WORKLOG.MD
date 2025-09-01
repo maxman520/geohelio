@@ -45,5 +45,12 @@
 2025-09-01 15:24 | chore | 공용 상수 클래스 추가(태그/애니메이터 트리거) 및 적용 | Assets/Scripts/Utilities/GameConstants.cs,Assets/Scripts/Game/Asteroid.cs
 2025-09-01 15:26 | chore | .gitignore에 REFACTORING_PLAN.MD 추가 | .gitignore
 
-<!-- COMMIT_BOOKMARK -->
 2025-09-01 15:30 | refactor | 스포너 AddComponent 제거, 프리팹 구성 검증(OnValidate) 추가 | Assets/Scripts/Game/ObjectSpawner.cs
+
+<!-- COMMIT_BOOKMARK -->
+2025-09-01 16:00 | docs | REFACTORING_PLAN.md를 F 단계(점수 팝업 통합안)만 남기고 나머지 삭제 | REFACTORING_PLAN.md
+2025-09-01 16:06 | feat | 점수 팝업(플로팅 텍스트) — ObjectSpawner 통합(풀/애니메이션/표시) | Assets/Scripts/Game/ObjectSpawner.cs,Assets/Scripts/Game/Asteroid.cs,Assets/Scripts/Game/GameManager.cs
+2025-09-01 16:12 | fix | UniTaskVoid 메서드 내 'yield break' 사용 오류 수정(return으로 조기 종료) | Assets/Scripts/Game/ObjectSpawner.cs
+2025-09-01 16:16 | refactor | 점수 팝업 위치 지터 제거(정확한 폭발 지점에 표시) | Assets/Scripts/Game/ObjectSpawner.cs
+2025-09-01 15:55 | docs | 점수 팝업 설계(F): ObjectSpawner 통합안으로 재작성 | REFACTORING_PLAN.md
+2025-09-01 15:48 | refactor | 게임오버 임계 반경에서 centerOutMargin 제거(스폰 반경 그대로 사용) | Assets/Scripts/Game/GameManager.cs

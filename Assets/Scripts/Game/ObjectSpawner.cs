@@ -1,6 +1,10 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Serialization;
+using Cysharp.Threading.Tasks;
+using System.Threading;
+using TMPro;
+using System.Globalization;
 
 // 소행성 스포너: 초기화 시 초기 배치를 만들고, 주기적으로 스폰을 수행한다.
 // 동작 규칙 개요:
@@ -25,6 +29,13 @@ public class ObjectSpawner : MonoBehaviour
     [Tooltip("카메라 가시 영역 밖에서 추가로 허용할 여유 반경(월드 단위)")]
     [SerializeField] private float despawnMargin = 0.75f;     // 화면 경계 밖 여유 공간. 디스폰 마진
 
+    [Header("점수 팝업(통합)")]
+    [Tooltip("점수 팝업 프리팹(월드 공간 TextMeshPro 권장)")]
+    [SerializeField] private GameObject scorePopupPrefab;
+    [SerializeField] private int maxScorePopups = 24;
+    [SerializeField] private float scorePopupDuration = 0.7f;
+    [SerializeField] private float scorePopupUpDistance = 1.0f;
+
     // 내부 진행 상태
     private float _timer;
     private bool _running;
@@ -34,6 +45,10 @@ public class ObjectSpawner : MonoBehaviour
     private Camera _camera;
     private bool _startSignalReceived;           // 시작 신호(첫 중심 전환) 수신 여부
     private bool _initializedAfterReset;         // Initialize 이후 상태 플래그
+
+    // 점수 팝업 풀/관리
+    private readonly Queue<GameObject> _scorePopupPool = new Queue<GameObject>();
+    private readonly Dictionary<GameObject, CancellationTokenSource> _scorePopupCts = new Dictionary<GameObject, CancellationTokenSource>();
 
     private void Awake()
     {
@@ -87,6 +102,14 @@ public class ObjectSpawner : MonoBehaviour
         {
             _player.OnCenterToggled -= OnPlayerCenterToggled;
         }
+
+        // 점수 팝업 작업 취소 및 정리
+        foreach (var kv in _scorePopupCts)
+        {
+            kv.Value?.Cancel();
+            kv.Value?.Dispose();
+        }
+        _scorePopupCts.Clear();
     }
 
     // GameManager 이벤트에 의존하지 않고, 실제 회전 중심 전환(탭)에 의해만 시작되도록 한다.
@@ -279,6 +302,102 @@ public class ObjectSpawner : MonoBehaviour
         asteroid.ResetForSpawn();
 
         _spawned.Add(go.transform);
+    }
+
+    // 점수 팝업 표시
+    public void ShowScorePopup(int amount, Vector3 worldPos)
+    {
+        if (scorePopupPrefab == null)
+        {
+            Debug.LogWarning("[ObjectSpawner] scorePopupPrefab이 설정되지 않아 점수 팝업을 표시할 수 없습니다.");
+            return;
+        }
+
+        var go = GetPopupFromPool();
+        go.transform.SetParent(transform, false);
+
+        // 시작 위치: 소행성 폭발 지점 그대로 사용(지터 제거)
+        Vector3 startPos = worldPos;
+        go.transform.position = startPos;
+        go.transform.localScale = Vector3.one * 0.9f; // 약한 펀치 시작
+
+        var label = go.GetComponentInChildren<TMP_Text>();
+        if (label != null)
+        {
+            string formatted = amount.ToString("N0", CultureInfo.InvariantCulture);
+            label.text = $"+{formatted}";
+            var c = label.color; c.a = 1f; label.color = c;
+        }
+
+        go.SetActive(true);
+
+        // 애니메이션 시작(UniTask)
+        RunScorePopupAsync(go, label, startPos, this.GetCancellationTokenOnDestroy()).Forget();
+    }
+
+    private GameObject GetPopupFromPool()
+    {
+        if (_scorePopupPool.Count > 0)
+        {
+            return _scorePopupPool.Dequeue();
+        }
+        return Instantiate(scorePopupPrefab);
+    }
+
+    private void DespawnScorePopup(GameObject go)
+    {
+        if (go == null) return;
+        if (_scorePopupCts.TryGetValue(go, out var cts))
+        {
+            cts.Cancel();
+            cts.Dispose();
+            _scorePopupCts.Remove(go);
+        }
+        go.SetActive(false);
+        go.transform.SetParent(transform, false);
+        if (_scorePopupPool.Count < Mathf.Max(0, maxScorePopups))
+            _scorePopupPool.Enqueue(go);
+    }
+
+    private async UniTaskVoid RunScorePopupAsync(GameObject go, TMP_Text label, Vector3 startPos, CancellationToken token)
+    {
+        // 개별 취소 토큰 소스 보관
+        if (_scorePopupCts.TryGetValue(go, out var prev))
+        {
+            prev.Cancel();
+            prev.Dispose();
+        }
+        var cts = CancellationTokenSource.CreateLinkedTokenSource(token);
+        _scorePopupCts[go] = cts;
+        var ct = cts.Token;
+
+        float dur = Mathf.Max(0.1f, scorePopupDuration);
+        float t = 0f;
+        Vector3 endPos = startPos + new Vector3(0f, scorePopupUpDistance, 0f);
+        float startScale = 0.9f;
+        float peakScale = 1.05f;
+
+        while (t < dur)
+        {
+            if (ct.IsCancellationRequested) return;
+            t += Time.deltaTime;
+            float u = Mathf.Clamp01(t / dur);
+            // 위치 보간(상승)
+            go.transform.position = Vector3.Lerp(startPos, endPos, u);
+            // 스케일 펀치(전반부만)
+            float s = (u < 0.3f) ? Mathf.Lerp(startScale, peakScale, u / 0.3f) : 1f;
+            go.transform.localScale = Vector3.one * s;
+            // 알파 페이드
+            if (label != null)
+            {
+                var c = label.color;
+                c.a = 1f - u;
+                label.color = c;
+            }
+            await UniTask.Yield(PlayerLoopTiming.Update, ct);
+        }
+
+        DespawnScorePopup(go);
     }
 
     // 모든 소행성 제거(태그 기반 월드 정리 + 풀/목록 정리)

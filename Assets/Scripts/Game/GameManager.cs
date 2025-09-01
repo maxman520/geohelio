@@ -35,8 +35,6 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
     [Header("게임오버 조건")]
     [Tooltip("플레이어의 현재 회전 중심이 스폰 영역(원점 중심 원)을 벗어나면 게임오버 처리")]
     [SerializeField] private bool gameOverWhenCenterOut = true;
-    [Tooltip("스폰 반경 대비 추가 허용 마진(월드 단위). 이 값을 더 넘어가면 게임오버")]
-    [SerializeField] private float centerOutMargin = 0.5f;
 
     // 진행 상태/통계
     private GameState _state = GameState.Init;
@@ -216,12 +214,13 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
     /// 소행성 파괴 보상: 현재 공전 중심 유지 중 연속 파괴에 따라 10, 20, 30... 가산.
     /// 중심이 변경되면 ToReady/OnCenterToggled에서 콤보가 0으로 리셋된다.
     /// </summary>
-    public void AwardAsteroidScore()
+    public int AwardAsteroidScore()
     {
         int multiplier = _comboCount + 1; // 최초 1배(10점)부터 시작
         int amount = 10 * multiplier;
         AddScore(amount);
         _comboCount++;
+        return amount;
     }
 
     public void LoseLife(int amount = 1)
@@ -310,7 +309,9 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
                 baseRadius = 6f; // 폴백
         }
 
-        float limit = baseRadius + Mathf.Max(0f, centerOutMargin);
+        // 게임오버 임계 반경: 스폰 반경 + 추가 허용 마진
+        // 게임오버 임계 반경: 스폰 반경(추가 마진 없음)
+        float limit = baseRadius;
         Vector2 p = centerTr.position;
         if (p.sqrMagnitude > limit * limit)
         {

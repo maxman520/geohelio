@@ -131,11 +131,19 @@ public class Asteroid : MonoBehaviour
         // 점수 지급 타이밍을 '애니메이션 트리거 직후'로 조정하여 체감 지연을 줄임
         try
         {
-            GameManager.Instance?.AwardAsteroidScore();
+            int amount = 0;
+            if (GameManager.Instance != null)
+            {
+                amount = GameManager.Instance.AwardAsteroidScore();
+            }
+            if (amount > 0)
+            {
+                _spawner?.ShowScorePopup(amount, transform.position);
+            }
         }
         catch (Exception e)
         {
-            Debug.LogWarning($"[Asteroid] 점수 추가 중 예외: {e.Message}");
+            Debug.LogWarning($"[Asteroid] 점수 추가/팝업 처리 중 예외: {e.Message}");
         }
 
         // 상태 전이 프레임 반영
