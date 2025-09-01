@@ -58,6 +58,29 @@ public class ObjectSpawner : MonoBehaviour
         }
     }
 
+#if UNITY_EDITOR
+    private void OnValidate()
+    {
+        // 프리팹 구성 검증: Asteroid 컴포넌트가 반드시 있어야 함
+        if (asteroidPrefab != null)
+        {
+            var hasAsteroid = asteroidPrefab.GetComponent<Asteroid>() != null;
+            if (!hasAsteroid)
+            {
+                UnityEngine.Debug.LogWarning("[ObjectSpawner] asteroidPrefab에 Asteroid 컴포넌트가 없습니다. 런타임 스폰이 취소될 수 있습니다.", asteroidPrefab);
+            }
+        }
+
+        if (spawnInterval < 0.05f) spawnInterval = 0.05f;
+        if (maxAlive < 0) maxAlive = 0;
+        if (spawnRadius < 0f) spawnRadius = 0f;
+        if (initialCount < 0) initialCount = 0;
+        if (minSeparation < 0f) minSeparation = 0f;
+        if (orbitEpsilon < 0f) orbitEpsilon = 0f;
+        if (despawnMargin < 0f) despawnMargin = 0f;
+    }
+#endif
+
     private void OnDestroy()
     {
         if (_player != null)
@@ -244,9 +267,14 @@ public class ObjectSpawner : MonoBehaviour
         go.transform.rotation = Quaternion.Euler(0f, 0f, z);
         go.SetActive(true);
 
-        // 구성 요소 준비
+        // 구성 요소 준비(프리팹 구성 보장: Asteroid 컴포넌트 필수)
         var asteroid = go.GetComponent<Asteroid>();
-        if (asteroid == null) asteroid = go.AddComponent<Asteroid>();
+        if (asteroid == null)
+        {
+            Debug.LogError("[ObjectSpawner] 소행성 프리팹에 Asteroid 컴포넌트가 없습니다. 스폰을 취소하고 풀로 반환합니다.");
+            InternalDespawn(go);
+            return;
+        }
         asteroid.Initialize(this);
         asteroid.ResetForSpawn();
 

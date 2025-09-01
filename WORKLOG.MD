@@ -19,7 +19,6 @@
 2025-08-29 18:12 | feat | 스폰 시작 조건: Initialize 후 첫 중심 전환 이후로 지연(이전 탭 무시) | Assets/Scripts/Game/ObjectSpawner.cs
 2025-08-29 18:16 | fix | 초기 배치 Initialize 시 생성, 주기 스폰은 첫 중심 전환 후 시작 | Assets/Scripts/Game/ObjectSpawner.cs
 
-<!-- COMMIT_BOOKMARK -->
 
 2025-08-30 02:53 | docs | 리팩터링 계획서 추가 | REFACTORING_PLAN.md
 2025-09-01 13:28 | feat | PlayerController 중심 전환 이벤트 발행 추가(OnCenterToggled) | Assets/Scripts/Player/PlayerController.cs
@@ -45,3 +44,6 @@
 2025-09-01 15:24 | refactor | SafeArea 직렬화/접근제어 정리 및 자동 참조 보완 | Assets/Scripts/UI/SafeArea.cs
 2025-09-01 15:24 | chore | 공용 상수 클래스 추가(태그/애니메이터 트리거) 및 적용 | Assets/Scripts/Utilities/GameConstants.cs,Assets/Scripts/Game/Asteroid.cs
 2025-09-01 15:26 | chore | .gitignore에 REFACTORING_PLAN.MD 추가 | .gitignore
+
+<!-- COMMIT_BOOKMARK -->
+2025-09-01 15:30 | refactor | 스포너 AddComponent 제거, 프리팹 구성 검증(OnValidate) 추가 | Assets/Scripts/Game/ObjectSpawner.cs
