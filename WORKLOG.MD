@@ -73,4 +73,12 @@
 2025-09-02 18:43 | docs | WORKLOG 시간순 정렬 및 최신 로그 위치 규칙 변경 | WORKLOG.MD,AGENTS.MD
 2025-09-02 19:27 | fix | 슈팅스타 이탈 기준을 카메라 사각형+마진으로 분리 적용(ObjectSpawner 확장) | Assets/Scripts/Game/ObjectSpawner.cs,Assets/Scripts/Game/ShootingStar.cs
 2025-09-02 19:28 | feat | 기즈모 보강 — 슈팅스타용 사각형 디스폰 경계(카메라 뷰+마진) 시각화 추가 | Assets/Scripts/Game/ObjectSpawner.cs
+
 <!-- COMMIT_BOOKMARK -->
+
+2025-09-03 01:10 | feat | 태양→지구 빔 정렬/수명 보정 스크립트 추가(SunBeamVfx) | Assets/Scripts/Player/SunBeamVfx.cs
+2025-09-03 01:40 | refactor | SunBeamVfx를 Local 시뮬레이션 공간 기반으로 동작하도록 옵션/경고 수정 | Assets/Scripts/Player/SunBeamVfx.cs
+2025-09-03 01:43 | refactor | SunBeamVfx에 정렬 축 선택/반전 옵션 추가(Up/Right/Forward) | Assets/Scripts/Player/SunBeamVfx.cs
+2025-09-03 01:47 | refactor | SunBeamVfx 정렬 로직을 Forward 고정으로 단순화(옵션 제거) | Assets/Scripts/Player/SunBeamVfx.cs
+2025-09-03 01:59 | refactor | SunBeamVfx의 자동 수명 보정 로직 제거(파티클 시스템에서 제어) | Assets/Scripts/Player/SunBeamVfx.cs
+2025-09-03 02:00 | refactor | SunBeamVfx에서 useLocalSimulationSpace/alignForwardToEarth 옵션 제거 및 Local+Forward 고정 | Assets/Scripts/Player/SunBeamVfx.cs
