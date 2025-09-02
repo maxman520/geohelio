@@ -19,8 +19,8 @@ public class Asteroid : MonoBehaviour
     [SerializeField] private SpriteRenderer[] spriteRenderers;
 
     [Header("설정")]
-    [SerializeField] private string explodeTrigger = "explode";
-    [SerializeField] private string explodeStateTag = "Explode";
+    [SerializeField] private string explodeTrigger = GameConstants.Anim.ExplodeTrigger;
+    [SerializeField] private string explodeStateTag = GameConstants.Anim.ExplodeStateTag;
     [Tooltip("애니메이터 상태 태그가 없을 때 대체로 기다릴 폭발 시간(초)")]
     [SerializeField] private float fallbackExplodeDuration = 0.6f;
 

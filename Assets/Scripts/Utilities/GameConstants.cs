@@ -19,4 +19,10 @@ public static class GameConstants
         public const string ExplodeStateTag = "Explode";
         public const string PlayerHurtState = "Hurt";
     }
+
+    public static class Scenes
+    {
+        public const string Main = "MainScene";
+        public const string Game = "GameScene";
+    }
 }

@@ -270,12 +270,12 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
     // 씬 전환 유틸
     public void LoadMainScene()
     {
-        SceneManager.LoadScene("MainScene");
+        SceneManager.LoadScene(GameConstants.Scenes.Main);
     }
 
     public void LoadGameScene()
     {
-        SceneManager.LoadScene("GameScene");
+        SceneManager.LoadScene(GameConstants.Scenes.Game);
     }
 
     public void RestartGameScene()

@@ -1,10 +1,8 @@
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.Serialization;
+using UnityEngine.Pool;
 using Cysharp.Threading.Tasks;
-using System.Threading;
-using TMPro;
-using System.Globalization;
+// using TMPro; // 플로팅 텍스트 로직은 ScoreFloatingText 컴포넌트로 이동
 
 // 소행성 스포너: 초기화 시 초기 배치를 만들고, 주기적으로 스폰을 수행한다.
 // 동작 규칙 개요:
@@ -29,6 +27,8 @@ public class ObjectSpawner : MonoBehaviour
     [Tooltip("카메라 가시 영역 밖에서 추가로 허용할 여유 반경(월드 단위)")]
     [SerializeField] private float despawnMargin = 0.75f;     // 화면 경계 밖 여유 공간. 디스폰 마진
 
+    
+
     [Header("장애물 소행성")]
     [Tooltip("장애물 소행성 프리팹(일반 소행성과 다른 프리팹 사용)")]
     [SerializeField] private GameObject obstacleAsteroidPrefab;
@@ -39,29 +39,42 @@ public class ObjectSpawner : MonoBehaviour
     [Tooltip("장애물 스폰 단계 지속 시간(초). 각 단계별 최대 동시 개수를 결정")]
     [SerializeField] private float obstacleStageDuration = 30f;
 
-    [Header("점수 팝업(통합)")]
-    [Tooltip("점수 팝업 프리팹(월드 공간 TextMeshPro 권장)")]
-    [SerializeField] private GameObject scorePopupPrefab;
-    [SerializeField] private int maxScorePopups = 24;
-    [SerializeField] private float scorePopupDuration = 0.7f;
-    [SerializeField] private float scorePopupUpDistance = 1.0f;
+    [Header("점수 텍스트")]
+    [Tooltip("점수 플로팅 텍스트 프리팹(ScoreFloatingText 포함)")]
+    [SerializeField] private GameObject scoreFloatingTextPrefab;
+
+    [Header("슈팅스타")]
+    [Tooltip("슈팅스타 프리팹(화면 밖→포물선 경로→화면 밖)")]
+    [SerializeField] private GameObject shootingStarPrefab;
+    [Tooltip("슈팅스타 경유점(플레이어 공전 중심 기준) 오프셋 반경 범위")]
+    [SerializeField] private Vector2 shootingStarOffsetRadiusRange = new Vector2(0.5f, 2.0f);
+    [Tooltip("슈팅스타 속도 범위(단위/초)")]
+    [SerializeField] private Vector2 shootingStarSpeedRange = new Vector2(4f, 7f);
+    [Tooltip("첫 생성까지의 최소 지연(첫 탭 이후, 초)")]
+    [SerializeField] private float shootingStarInitialDelay = 10f;
+    [Tooltip("최대 동시 개수 도달 시 쿨타임(초)")]
+    [SerializeField] private float shootingStarPostMaxCooldown = 10f;
+    [Tooltip("생성 시도 간 랜덤 추가 지연 범위(초)")]
+    [SerializeField] private Vector2 shootingStarRandomDelayRange = new Vector2(0.5f, 3.0f);
+    [Tooltip("슈팅스타 동시 최대 수")]
+    [SerializeField] private int shootingStarMaxAlive = 6;
 
     // 내부 진행 상태
     private float _timer;
     private float _obstacleTimer;
+    private float _shootingStarNextAttemptTime = -1f;
     private bool _running;
     private readonly List<Transform> _spawned = new List<Transform>(); // 관리 중인 소행성 목록
-    private readonly Queue<GameObject> _pool = new Queue<GameObject>(); // 풀(비활성 대기)
     private readonly List<Transform> _spawnedObstacles = new List<Transform>(); // 장애물 소행성 목록
-    private readonly Queue<GameObject> _obstaclePool = new Queue<GameObject>(); // 장애물 풀
+    private readonly List<Transform> _spawnedShootingStars = new List<Transform>(); // 슈팅스타 목록
+    // 유니티 내장 풀 딕셔너리: key = 프리팹 이름, value = ObjectPool
+    private readonly Dictionary<string, ObjectPool<GameObject>> _pools = new Dictionary<string, ObjectPool<GameObject>>();
     private PlayerController _player;
     private Camera _camera;
     private bool _startSignalReceived;           // 시작 신호(첫 중심 전환) 수신 여부
     private bool _initializedAfterReset;         // Initialize 이후 상태 플래그
 
-    // 점수 팝업 풀/관리
-    private readonly Queue<GameObject> _scorePopupPool = new Queue<GameObject>();
-    private readonly Dictionary<GameObject, CancellationTokenSource> _scorePopupCts = new Dictionary<GameObject, CancellationTokenSource>();
+    // 스포너 파괴 시 진행 중 애니메이션이 있더라도 자연 종료에 맡긴다(컴포넌트가 자체 처리).
 
     private void Awake()
     {
@@ -95,7 +108,7 @@ public class ObjectSpawner : MonoBehaviour
             var hasAsteroid = asteroidPrefab.GetComponent<Asteroid>() != null;
             if (!hasAsteroid)
             {
-                UnityEngine.Debug.LogWarning("[ObjectSpawner] asteroidPrefab에 Asteroid 컴포넌트가 없습니다. 런타임 스폰이 취소될 수 있습니다.", asteroidPrefab);
+                Debug.LogWarning("[ObjectSpawner] asteroidPrefab에 Asteroid 컴포넌트가 없습니다. 런타임 스폰이 취소될 수 있습니다.", asteroidPrefab);
             }
         }
         if (obstacleAsteroidPrefab != null)
@@ -103,7 +116,16 @@ public class ObjectSpawner : MonoBehaviour
             var hasAsteroid2 = obstacleAsteroidPrefab.GetComponent<Asteroid>() != null;
             if (!hasAsteroid2)
             {
-                UnityEngine.Debug.LogWarning("[ObjectSpawner] obstacleAsteroidPrefab에 Asteroid 컴포넌트가 없습니다. 런타임 스폰이 취소될 수 있습니다.", obstacleAsteroidPrefab);
+                Debug.LogWarning("[ObjectSpawner] obstacleAsteroidPrefab에 Asteroid 컴포넌트가 없습니다. 런타임 스폰이 취소될 수 있습니다.", obstacleAsteroidPrefab);
+            }
+        }
+
+        if (shootingStarPrefab != null)
+        {
+            var hasStar = shootingStarPrefab.GetComponent<ShootingStar>() != null;
+            if (!hasStar)
+            {
+                Debug.LogWarning("[ObjectSpawner] shootingStarPrefab에 ShootingStar 컴포넌트가 없습니다. 런타임 스폰이 취소될 수 있습니다.", shootingStarPrefab);
             }
         }
 
@@ -117,6 +139,23 @@ public class ObjectSpawner : MonoBehaviour
         if (obstacleSpawnInterval < 0.05f) obstacleSpawnInterval = 0.05f;
         if (obstacleMinSeparation < 0f) obstacleMinSeparation = 0f;
         if (obstacleStageDuration < 1f) obstacleStageDuration = 1f;
+
+        if (shootingStarMaxAlive < 0) shootingStarMaxAlive = 0;
+        if (shootingStarSpeedRange.x < 0.1f) shootingStarSpeedRange.x = 0.1f;
+        if (shootingStarSpeedRange.y < shootingStarSpeedRange.x) shootingStarSpeedRange.y = shootingStarSpeedRange.x;
+        if (shootingStarInitialDelay < 0f) shootingStarInitialDelay = 0f;
+        if (shootingStarPostMaxCooldown < 0f) shootingStarPostMaxCooldown = 0f;
+        if (shootingStarRandomDelayRange.x < 0f) shootingStarRandomDelayRange.x = 0f;
+        if (shootingStarRandomDelayRange.y < shootingStarRandomDelayRange.x) shootingStarRandomDelayRange.y = shootingStarRandomDelayRange.x;
+
+        if (scoreFloatingTextPrefab != null)
+        {
+            var hasComp = scoreFloatingTextPrefab.GetComponent<ScoreFloatingText>() != null;
+            if (!hasComp)
+            {
+                Debug.LogWarning("[ObjectSpawner] scoreFloatingTextPrefab에 ScoreFloatingText 컴포넌트가 없습니다.", scoreFloatingTextPrefab);
+            }
+        }
     }
 #endif
 
@@ -127,13 +166,7 @@ public class ObjectSpawner : MonoBehaviour
             _player.OnCenterToggled -= OnPlayerCenterToggled;
         }
 
-        // 점수 팝업 작업 취소 및 정리
-        foreach (var kv in _scorePopupCts)
-        {
-            kv.Value?.Cancel();
-            kv.Value?.Dispose();
-        }
-        _scorePopupCts.Clear();
+        // 점수 텍스트는 외부 토큰 관리가 필요 없으므로 별도 정리 없음
     }
 
     // GameManager 이벤트에 의존하지 않고, 실제 회전 중심 전환(탭)에 의해만 시작되도록 한다.
@@ -157,6 +190,8 @@ public class ObjectSpawner : MonoBehaviour
             _obstacleTimer = 0f;
             TrySpawnObstacle();
         }
+
+        UpdateShootingStarSchedule();
     }
 
     /// <summary>
@@ -178,6 +213,8 @@ public class ObjectSpawner : MonoBehaviour
         _running = false; // 주기 스폰은 보류
         _timer = 0f;
         _obstacleTimer = 0f;
+        _shootingStarNextAttemptTime = -1f;
+        
         _initializedAfterReset = true;
         Debug.Log("[ObjectSpawner] 초기화 완료: 초기 배치 생성 후 시작 신호(첫 중심 전환) 대기");
     }
@@ -198,10 +235,49 @@ public class ObjectSpawner : MonoBehaviour
     {
         if (!_initializedAfterReset || _startSignalReceived) return;
         HandleStartSignal();
+        // 첫 생성은 초기 지연 + 랜덤 추가 지연 이후
+        float extra = Random.Range(shootingStarRandomDelayRange.x, shootingStarRandomDelayRange.y);
+        _shootingStarNextAttemptTime = Time.time + shootingStarInitialDelay + Mathf.Max(0f, extra);
         // 첫 신호 처리 후 더 이상 필요 없으므로 구독 해제
         if (_player != null)
         {
             _player.OnCenterToggled -= OnPlayerCenterToggled;
+        }
+    }
+
+    private void UpdateShootingStarSchedule()
+    {
+        if (_shootingStarNextAttemptTime < 0f) return; // 아직 시작 신호 전
+        if (Time.time < _shootingStarNextAttemptTime) return;
+
+        // 최대 개수 도달 시 쿨타임 설정(즉시 생성 금지)
+        if (_spawnedShootingStars.Count >= shootingStarMaxAlive)
+        {
+            float extra = Random.Range(shootingStarRandomDelayRange.x, shootingStarRandomDelayRange.y);
+            _shootingStarNextAttemptTime = Time.time + shootingStarPostMaxCooldown + Mathf.Max(0f, extra);
+            return;
+        }
+
+        // 생성 시도
+        bool spawned = TrySpawnShootingStar();
+        if (spawned)
+        {
+            // 스폰 직후 최대치에 도달하면 쿨타임 진입
+            if (_spawnedShootingStars.Count >= shootingStarMaxAlive)
+            {
+                float extra = Random.Range(shootingStarRandomDelayRange.x, shootingStarRandomDelayRange.y);
+                _shootingStarNextAttemptTime = Time.time + shootingStarPostMaxCooldown + Mathf.Max(0f, extra);
+            }
+            else
+            {
+                float extra = Random.Range(shootingStarRandomDelayRange.x, shootingStarRandomDelayRange.y);
+                _shootingStarNextAttemptTime = Time.time + Mathf.Max(0f, extra);
+            }
+        }
+        else
+        {
+            // 실패 시 짧게 재시도
+            _shootingStarNextAttemptTime = Time.time + 0.5f;
         }
     }
 
@@ -264,6 +340,42 @@ public class ObjectSpawner : MonoBehaviour
         }
     }
 
+    // 슈팅스타 스폰
+    private bool TrySpawnShootingStar()
+    {
+        if (shootingStarPrefab == null) return false;
+        CleanupShootingList();
+        if (_spawnedShootingStars.Count >= shootingStarMaxAlive) return false;
+
+        // 카메라 중심과 경계 계산
+        Vector3 camCenter = Vector3.zero;
+        if (_camera != null)
+        {
+            var cp = _camera.transform.position; camCenter = new Vector3(cp.x, cp.y, 0f);
+        }
+        float baseR = GetSpawnRadiusWorld() + Mathf.Max(0f, despawnMargin) + 0.5f; // 조금 더 밖에서 시작/종료
+
+        // 시작/종료 지점은 반대편 원둘레 근방으로 설정
+        float ang = Random.Range(0f, Mathf.PI * 2f);
+        Vector2 dir = new Vector2(Mathf.Cos(ang), Mathf.Sin(ang));
+        Vector3 start = camCenter + new Vector3(dir.x, dir.y, 0f) * baseR;
+        Vector3 end = camCenter - new Vector3(dir.x, dir.y, 0f) * baseR;
+
+        // 컨트롤 포인트: 플레이어 공전 중심 + 랜덤 오프셋(링 범위)
+        Vector3 center = Vector3.zero;
+        if (_player != null && _player.CurrentCenter != null) center = _player.CurrentCenter.position;
+        float rMin = Mathf.Max(0f, Mathf.Min(shootingStarOffsetRadiusRange.x, shootingStarOffsetRadiusRange.y));
+        float rMax = Mathf.Max(rMin, Mathf.Max(shootingStarOffsetRadiusRange.x, shootingStarOffsetRadiusRange.y));
+        float r = Random.Range(rMin, rMax);
+        Vector2 offDir = (Random.insideUnitCircle.sqrMagnitude < 1e-6f) ? Vector2.right : Random.insideUnitCircle.normalized;
+        Vector3 control = center + new Vector3(offDir.x, offDir.y, 0f) * r;
+
+        // 속도 선택
+        float spd = Random.Range(Mathf.Min(shootingStarSpeedRange.x, shootingStarSpeedRange.y), Mathf.Max(shootingStarSpeedRange.x, shootingStarSpeedRange.y));
+        SpawnShootingAt(start, control, end, spd);
+        return true;
+    }
+
     private bool TryGetObstacleSpawnPosition(out Vector3 pos)
     {
         Vector3 c = Vector3.zero;
@@ -308,19 +420,18 @@ public class ObjectSpawner : MonoBehaviour
 
     private void SpawnObstacleAt(Vector3 pos)
     {
-        var go = GetFromObstaclePool();
+        var go = GetFromPool(obstacleAsteroidPrefab);
         go.transform.SetParent(transform, false);
         go.transform.position = pos;
 
         float z = Random.Range(0f, 360f);
         go.transform.rotation = Quaternion.Euler(0f, 0f, z);
-        go.SetActive(true);
 
         var asteroid = go.GetComponent<Asteroid>();
         if (asteroid == null)
         {
             Debug.LogError("[ObjectSpawner] 장애물 프리팹에 Asteroid 컴포넌트가 없습니다. 스폰을 취소합니다.");
-            InternalObstacleDespawn(go);
+            ReturnToPool(go);
             return;
         }
         asteroid.Initialize(this);
@@ -399,22 +510,114 @@ public class ObjectSpawner : MonoBehaviour
         return d.sqrMagnitude > r * r;
     }
 
+    /// <summary>
+    /// 슈팅스타 전용: 카메라 뷰를 사각형으로 보고, margin(월드 단위)을 사방으로 확장한 영역을 벗어나면 true를 반환한다.
+    /// - 직교 카메라인 경우에만 정확한 사각형 판정. 그 외에는 기존 원형 판정으로 폴백한다.
+    /// - 다른 엔티티(소행성/플레이어)는 기존 원형 판정을 유지하므로, 이 메서드는 ShootingStar에서만 사용한다.
+    /// </summary>
+    public bool IsOutsideCameraRectWithMargin(Vector3 worldPos)
+    {
+        if (_camera != null && _camera.orthographic)
+        {
+            // 카메라 중심 기준, 가시 영역의 절반 너비/높이에 마진을 더해 확장 사각형을 구성한다.
+            var cp = _camera.transform.position;
+            float halfHeight = _camera.orthographicSize + Mathf.Max(0f, despawnMargin);
+            float halfWidth = _camera.orthographicSize * _camera.aspect + Mathf.Max(0f, despawnMargin);
+
+            float dx = worldPos.x - cp.x;
+            float dy = worldPos.y - cp.y;
+            if (Mathf.Abs(dx) > halfWidth) return true;
+            if (Mathf.Abs(dy) > halfHeight) return true;
+            return false;
+        }
+
+        // 원근 카메라 등 특수 케이스에서는 기존 원형 판정을 사용(보수적 폴백)
+        return IsOutsideDespawnBounds(worldPos);
+    }
+
+    // ---------- 풀 헬퍼: 유니티 내장 풀(ObjectPool) 딕셔너리 ----------
+    private ObjectPool<GameObject> GetPoolForPrefab(GameObject prefab)
+    {
+        if (prefab == null) return null;
+        string key = prefab.name;
+        if (_pools.TryGetValue(key, out var pool)) return pool;
+
+        // 풀 생성: 동일 프리팹만 생성되도록 createFunc에 프리팹 캡처
+        bool collectionCheck = true;
+        int defaultCapacity = 16;
+        int maxSize = 256;
+        pool = new ObjectPool<GameObject>(
+            createFunc: () =>
+            {
+                var go = Instantiate(prefab);
+                // 풀 키 태그 설정
+                var tag = go.GetComponent<PooledObjectTag>();
+                if (tag == null) tag = go.AddComponent<PooledObjectTag>();
+                tag.SetKey(key);
+                go.SetActive(false);
+                return go;
+            },
+            actionOnGet: go =>
+            {
+                if (go == null) return;
+                go.SetActive(true);
+            },
+            actionOnRelease: go =>
+            {
+                if (go == null) return;
+                go.SetActive(false);
+                // 관리 편의를 위해 스포너 자식으로 귀속
+                go.transform.SetParent(transform, false);
+            },
+            actionOnDestroy: go =>
+            {
+                if (go != null) Destroy(go);
+            },
+            collectionCheck: collectionCheck,
+            defaultCapacity: defaultCapacity,
+            maxSize: maxSize
+        );
+
+        _pools[key] = pool;
+        return pool;
+    }
+
+    private GameObject GetFromPool(GameObject prefab)
+    {
+        var pool = GetPoolForPrefab(prefab);
+        if (pool == null) return null;
+        return pool.Get();
+    }
+
+    private void ReturnToPool(GameObject go)
+    {
+        if (go == null) return;
+        var tag = go.GetComponent<PooledObjectTag>();
+        if (tag == null || string.IsNullOrEmpty(tag.PoolKey) || !_pools.TryGetValue(tag.PoolKey, out var pool))
+        {
+            Debug.LogWarning("[ObjectSpawner] 풀 키를 찾지 못해 오브젝트를 비활성화만 합니다.", go);
+            go.SetActive(false);
+            go.transform.SetParent(transform, false);
+            return;
+        }
+        pool.Release(go);
+    }
+
     private void SpawnAt(Vector3 pos)
     {
-        var go = GetFromPool();
+        var go = GetFromPool(asteroidPrefab);
         go.transform.SetParent(transform, false);
         go.transform.position = pos;
         // 스폰 시 Z 회전값을 랜덤으로 부여하여 소행성 방향을 다양화
         float z = Random.Range(0f, 360f);
         go.transform.rotation = Quaternion.Euler(0f, 0f, z);
-        go.SetActive(true);
 
         // 구성 요소 준비(프리팹 구성 보장: Asteroid 컴포넌트 필수)
         var asteroid = go.GetComponent<Asteroid>();
         if (asteroid == null)
         {
-            Debug.LogError("[ObjectSpawner] 소행성 프리팹에 Asteroid 컴포넌트가 없습니다. 스폰을 취소하고 풀로 반환합니다.");
-            InternalDespawn(go);
+            Debug.LogError("[ObjectSpawner] 소행성 프리팹에 Asteroid 컴포넌트가 없습니다. 스폰을 취소합니다.");
+            ReturnToPool(go);
             return;
         }
         asteroid.Initialize(this);
@@ -426,97 +629,26 @@ public class ObjectSpawner : MonoBehaviour
     // 점수 팝업 표시
     public void ShowScorePopup(int amount, Vector3 worldPos)
     {
-        if (scorePopupPrefab == null)
+        if (scoreFloatingTextPrefab == null)
         {
-            Debug.LogWarning("[ObjectSpawner] scorePopupPrefab이 설정되지 않아 점수 팝업을 표시할 수 없습니다.");
+            Debug.LogWarning("[ObjectSpawner] scoreFloatingTextPrefab이 설정되지 않아 점수 텍스트를 표시할 수 없습니다.");
             return;
         }
-
-        var go = GetPopupFromPool();
+        var go = GetFromPool(scoreFloatingTextPrefab);
         go.transform.SetParent(transform, false);
 
-        // 시작 위치: 소행성 폭발 지점 그대로 사용(지터 제거)
         Vector3 startPos = worldPos;
         go.transform.position = startPos;
-        go.transform.localScale = Vector3.one * 0.9f; // 약한 펀치 시작
 
-        var label = go.GetComponentInChildren<TMP_Text>();
-        if (label != null)
+        var comp = go.GetComponent<ScoreFloatingText>();
+        if (comp == null)
         {
-            string formatted = amount.ToString("N0", CultureInfo.InvariantCulture);
-            label.text = $"+{formatted}";
-            var c = label.color; c.a = 1f; label.color = c;
+            Debug.LogWarning("[ObjectSpawner] scoreFloatingTextPrefab에 ScoreFloatingText 컴포넌트가 없습니다.", go);
+            ReturnToPool(go);
+            return;
         }
-
-        go.SetActive(true);
-
-        // 애니메이션 시작(UniTask)
-        RunScorePopupAsync(go, label, startPos, this.GetCancellationTokenOnDestroy()).Forget();
-    }
-
-    private GameObject GetPopupFromPool()
-    {
-        if (_scorePopupPool.Count > 0)
-        {
-            return _scorePopupPool.Dequeue();
-        }
-        return Instantiate(scorePopupPrefab);
-    }
-
-    private void DespawnScorePopup(GameObject go)
-    {
-        if (go == null) return;
-        if (_scorePopupCts.TryGetValue(go, out var cts))
-        {
-            cts.Cancel();
-            cts.Dispose();
-            _scorePopupCts.Remove(go);
-        }
-        go.SetActive(false);
-        go.transform.SetParent(transform, false);
-        if (_scorePopupPool.Count < Mathf.Max(0, maxScorePopups))
-            _scorePopupPool.Enqueue(go);
-    }
-
-    private async UniTaskVoid RunScorePopupAsync(GameObject go, TMP_Text label, Vector3 startPos, CancellationToken token)
-    {
-        // 개별 취소 토큰 소스 보관
-        if (_scorePopupCts.TryGetValue(go, out var prev))
-        {
-            prev.Cancel();
-            prev.Dispose();
-        }
-        var cts = CancellationTokenSource.CreateLinkedTokenSource(token);
-        _scorePopupCts[go] = cts;
-        var ct = cts.Token;
-
-        float dur = Mathf.Max(0.1f, scorePopupDuration);
-        float t = 0f;
-        Vector3 endPos = startPos + new Vector3(0f, scorePopupUpDistance, 0f);
-        float startScale = 0.9f;
-        float peakScale = 1.05f;
-
-        while (t < dur)
-        {
-            if (ct.IsCancellationRequested) return;
-            t += Time.deltaTime;
-            float u = Mathf.Clamp01(t / dur);
-            // 위치 보간(상승)
-            go.transform.position = Vector3.Lerp(startPos, endPos, u);
-            // 스케일 펀치(전반부만)
-            float s = (u < 0.3f) ? Mathf.Lerp(startScale, peakScale, u / 0.3f) : 1f;
-            go.transform.localScale = Vector3.one * s;
-            // 알파 페이드
-            if (label != null)
-            {
-                var c = label.color;
-                c.a = 1f - u;
-                label.color = c;
-            }
-            await UniTask.Yield(PlayerLoopTiming.Update, ct);
-        }
-
-        DespawnScorePopup(go);
+        comp.SetAmount(amount);
+        comp.PlayAsync(startPos).ContinueWith(() => { ReturnToPool(go); }).Forget();
     }
 
     // 모든 소행성 제거(태그 기반 월드 정리 + 풀/목록 정리)
@@ -538,7 +670,7 @@ public class ObjectSpawner : MonoBehaviour
         {
             var tr = _spawned[i];
             if (tr == null) continue;
-            InternalDespawn(tr.gameObject);
+            ReturnToPool(tr.gameObject);
         }
         _spawned.Clear();
 
@@ -548,9 +680,19 @@ public class ObjectSpawner : MonoBehaviour
         {
             var tr = _spawnedObstacles[i];
             if (tr == null) continue;
-            InternalObstacleDespawn(tr.gameObject);
+            ReturnToPool(tr.gameObject);
         }
         _spawnedObstacles.Clear();
+
+        // 슈팅스타도 동일 처리
+        CleanupShootingList();
+        for (int i = _spawnedShootingStars.Count - 1; i >= 0; i--)
+        {
+            var tr = _spawnedShootingStars[i];
+            if (tr == null) continue;
+            ReturnToPool(tr.gameObject);
+        }
+        _spawnedShootingStars.Clear();
     }
 
     // 목록 내 null 항목 정리
@@ -570,6 +712,14 @@ public class ObjectSpawner : MonoBehaviour
         }
     }
 
+    private void CleanupShootingList()
+    {
+        for (int i = _spawnedShootingStars.Count - 1; i >= 0; i--)
+        {
+            if (_spawnedShootingStars[i] == null) _spawnedShootingStars.RemoveAt(i);
+        }
+    }
+
     // 소행성이 파괴될 때: 목록에서 제거
     public void NotifyDestroyed(Transform tr)
     {
@@ -584,53 +734,35 @@ public class ObjectSpawner : MonoBehaviour
         if (tr == null) return;
         var go = tr.gameObject;
         // 어떤 풀인지 구분하여 반환
-        if (_spawned.Remove(tr))
+        if (_spawned.Remove(tr) || _spawnedObstacles.Remove(tr) || _spawnedShootingStars.Remove(tr))
         {
-            InternalDespawn(go);
+            ReturnToPool(go);
             return;
         }
-        if (_spawnedObstacles.Remove(tr))
+        // 목록에 없더라도 풀로 반환(외부에서 직접 호출된 경우 대비)
+        ReturnToPool(go);
+    }
+
+    
+
+    private void SpawnShootingAt(Vector3 start, Vector3 control, Vector3 end, float speed)
+    {
+        var go = GetFromPool(shootingStarPrefab);
+        go.transform.SetParent(transform, false);
+        go.transform.position = start;
+        go.transform.rotation = Quaternion.identity;
+
+        var star = go.GetComponent<ShootingStar>();
+        if (star == null)
         {
-            InternalObstacleDespawn(go);
+            Debug.LogError("[ObjectSpawner] shootingStarPrefab에 ShootingStar 컴포넌트가 없습니다. 스폰을 취소합니다.");
+            ReturnToPool(go);
             return;
         }
-        // 목록에 없으면 일반 풀로 반환(폴백)
-        InternalDespawn(go);
-    }
-
-    private GameObject GetFromPool()
-    {
-        if (_pool.Count > 0)
-        {
-            var go = _pool.Dequeue();
-            return go;
-        }
-        return Instantiate(asteroidPrefab);
-    }
-
-    private GameObject GetFromObstaclePool()
-    {
-        if (_obstaclePool.Count > 0)
-        {
-            return _obstaclePool.Dequeue();
-        }
-        return Instantiate(obstacleAsteroidPrefab);
-    }
-
-    private void InternalDespawn(GameObject go)
-    {
-        if (go == null) return;
-        go.SetActive(false);
-        go.transform.SetParent(transform, false);
-        _pool.Enqueue(go);
-    }
-
-    private void InternalObstacleDespawn(GameObject go)
-    {
-        if (go == null) return;
-        go.SetActive(false);
-        go.transform.SetParent(transform, false);
-        _obstaclePool.Enqueue(go);
+        // 먼저 목록에 추가하여 이동 시작 직후 디스폰되어도 올바른 풀로 복귀되게 함
+        _spawnedShootingStars.Add(go.transform);
+        star.Initialize(this);
+        star.Launch(start, control, end, speed);
     }
 
     // 플레이어 생존 시간에 따른 장애물 최대 동시 개수(1단계:2, 2단계:3, 3단계+:4)
@@ -674,6 +806,13 @@ public class ObjectSpawner : MonoBehaviour
             // 카메라 중심 마커
             Gizmos.color = new Color(1f, 0.8f, 0.2f, 0.9f);
             Gizmos.DrawSphere(c, Mathf.Max(0.04f, r * 0.015f));
+        }
+
+        // 슈팅스타용 사각형 디스폰 경계(카메라 뷰 + 마진)
+        if (TryGetGizmoDespawnRect(out Vector3 rc, out float halfW, out float halfH))
+        {
+            Gizmos.color = new Color(0.7f, 0.2f, 1f, 0.9f); // 보라색: 사각형 경계
+            DrawWireRect(rc, halfW, halfH);
         }
     }
 
@@ -752,5 +891,46 @@ public class ObjectSpawner : MonoBehaviour
         }
         radius = baseR + Mathf.Max(0f, despawnMargin);
         return true;
+    }
+
+    // 카메라 직교 뷰 기준 사각형 디스폰 경계(슈팅스타용) 계산: 성공 시 true
+    private bool TryGetGizmoDespawnRect(out Vector3 center, out float halfWidth, out float halfHeight)
+    {
+        center = Vector3.zero;
+        halfWidth = 0f; halfHeight = 0f;
+
+        Camera cam = null;
+        if (Application.isPlaying)
+        {
+            cam = _camera;
+        }
+        else
+        {
+            cam = Camera.main != null ? Camera.main : FindFirstObjectByType<Camera>();
+        }
+
+        if (cam == null || !cam.orthographic)
+        {
+            return false; // 직교 카메라가 아닐 때는 사각형 경계를 그리지 않음
+        }
+
+        center = cam.transform.position; center.z = 0f;
+        halfHeight = cam.orthographicSize + Mathf.Max(0f, despawnMargin);
+        halfWidth = cam.orthographicSize * cam.aspect + Mathf.Max(0f, despawnMargin);
+        return true;
+    }
+
+    // 사각형 외곽선 그리기(카메라 뷰 + 마진 시각화)
+    private void DrawWireRect(Vector3 center, float halfWidth, float halfHeight)
+    {
+        Vector3 bl = new Vector3(center.x - halfWidth, center.y - halfHeight, 0f);
+        Vector3 br = new Vector3(center.x + halfWidth, center.y - halfHeight, 0f);
+        Vector3 tr = new Vector3(center.x + halfWidth, center.y + halfHeight, 0f);
+        Vector3 tl = new Vector3(center.x - halfWidth, center.y + halfHeight, 0f);
+
+        Gizmos.DrawLine(bl, br);
+        Gizmos.DrawLine(br, tr);
+        Gizmos.DrawLine(tr, tl);
+        Gizmos.DrawLine(tl, bl);
     }
 }

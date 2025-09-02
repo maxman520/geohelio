@@ -1,6 +1,5 @@
 using System;
 using UnityEngine;
-using UnityEngine.Serialization;
 
 /// <summary>
 /// 플레이어 컨트롤러: 초기 상태에서 지구·태양 거리를 유지하며
@@ -10,44 +9,26 @@ using UnityEngine.Serialization;
 public class PlayerController : MonoBehaviour
 {
     [Header("참조")]
-    [FormerlySerializedAs("earth")]
-    [FormerlySerializedAs("_earth")]
     [SerializeField] private Transform earth;   // 지구 트랜스폼
-    [FormerlySerializedAs("sun")]
-    [FormerlySerializedAs("_sun")]
     [SerializeField] private Transform sun;     // 태양 트랜스폼
-    [FormerlySerializedAs("beam")]
-    [FormerlySerializedAs("_beam")]
     [SerializeField] private Transform beam;    // 지구-태양을 잇는 빔 트랜스폼(스프라이트 +Y가 길이 방향)
-    [FormerlySerializedAs("beamRenderer")]
-    [FormerlySerializedAs("_beamRenderer")]
     [SerializeField] private SpriteRenderer beamRenderer; // 빔 스프라이트 렌더러(길이 계산용)
 
     [Header("설정")]
     [Tooltip("지구-태양 거리(보정 포함)")]
-    [FormerlySerializedAs("distance")]
-    [FormerlySerializedAs("_distance")]
     [SerializeField] private float distance = 3f; // 지구-태양 거리
 
     [Tooltip("공전 속도(도/초)")]
-    [FormerlySerializedAs("orbitSpeed")]
-    [FormerlySerializedAs("_orbitSpeed")]
     [SerializeField] private float orbitSpeed = 90f; // 공전 속도(도/초)
 
     [Tooltip("공전 축(기본: Z축, 2D 평면)")]
-    [FormerlySerializedAs("orbitAxis")]
-    [FormerlySerializedAs("_orbitAxis")]
     [SerializeField] private Vector3 orbitAxis = Vector3.forward; // 공전 축
 
     [Header("빔 설정")]
     [Tooltip("빔 두께(X 스케일). 스프라이트 길이와는 별개로 두께만 조정")]
-    [FormerlySerializedAs("beamThickness")]
-    [FormerlySerializedAs("_beamThickness")]
     [SerializeField] private float beamThickness = 1f; // 빔 두께
 
     [Tooltip("지구-태양 거리 변화에 맞춰 빔 길이를 자동으로 맞춤")]
-    [FormerlySerializedAs("matchBeamToDistance")]
-    [FormerlySerializedAs("_matchBeamToDistance")]
     [SerializeField] private bool matchBeamToDistance = true; // 빔 길이 자동 맞춤
 
     private enum OrbitCenter

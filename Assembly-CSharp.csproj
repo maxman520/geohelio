@@ -52,14 +52,17 @@
   <ItemGroup>
     <Compile Include="Assets\Scripts\Utilities\GameConstants.cs" />
     <Compile Include="Assets\Scripts\Game\Asteroid.cs" />
+    <Compile Include="Assets\Scripts\Utilities\PooledObjectTag.cs" />
     <Compile Include="Assets\Scripts\Game\GameManager.cs" />
     <Compile Include="Assets\Scripts\UI\GameOverPanel.cs" />
     <Compile Include="Assets\Scripts\Game\ObjectSpawner.cs" />
     <Compile Include="Assets\Scripts\Utilities\SingletonMonoBehaviour.cs" />
     <Compile Include="Assets\Scripts\UI\MainMenuController.cs" />
     <Compile Include="Assets\Scripts\UI\SafeArea.cs" />
+    <Compile Include="Assets\Scripts\UI\ScoreFloatingText.cs" />
     <Compile Include="Assets\Scripts\Player\PlayerController.cs" />
     <Compile Include="Assets\Scripts\UI\ScorePanel.cs" />
+    <Compile Include="Assets\Scripts\Game\ShootingStar.cs" />
     <Compile Include="Assets\Scripts\UI\UIManager.cs" />
   </ItemGroup>
   <ItemGroup>

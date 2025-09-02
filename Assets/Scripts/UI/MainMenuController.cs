@@ -11,7 +11,7 @@ namespace GeoHelio.UI
     /// </summary>
     public class MainMenuController : MonoBehaviour
     {
-        [SerializeField] private string targetSceneName = "GameScene"; // 전환 대상 씬 이름
+        [SerializeField] private string targetSceneName = GameConstants.Scenes.Game; // 전환 대상 씬 이름
         [SerializeField] private bool showLog = true; // 디버그 로그 출력 여부
 
         private bool loading;
@@ -68,4 +68,3 @@ namespace GeoHelio.UI
         }
     }
 }
-
