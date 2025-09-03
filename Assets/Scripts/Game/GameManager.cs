@@ -61,21 +61,11 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
         // 싱글턴 기본 초기화
         base.Awake();
 
-        // 플레이어 참조 자동 바인딩(없을 경우에만)
-        if (player == null)
-        {
-            player = FindFirstObjectByType<PlayerController>();
-            if (player == null)
-            {
-                Debug.LogWarning("[GameManager] PlayerController 참조가 없습니다. 씬에 배치했는지 또는 스크립트에서 연결했는지 확인해 주세요.");
-            }
-        }
+        // 현재 씬의 레퍼런스 바인딩(플레이어/스포너)
+        BindSceneReferences();
 
-        // Player 중심 전환 이벤트 구독(있을 경우)
-        if (player != null)
-        {
-            player.OnCenterToggled += OnPlayerCenterToggled;
-        }
+        // 씬 로드 시마다 레퍼런스 재바인딩을 위해 이벤트 구독
+        SceneManager.sceneLoaded += OnSceneLoaded;
 
         // 기본 값 초기화
         _lives = Mathf.Max(0, initialLives);
@@ -91,6 +81,13 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
         {
             ToReady();
         }
+    }
+
+    private void OnEnable()
+    {
+        // 에디터에서 재컴파일/활성화 시 이벤트 재구독 누락 방지
+        SceneManager.sceneLoaded -= OnSceneLoaded;
+        SceneManager.sceneLoaded += OnSceneLoaded;
     }
 
     private void Update()
@@ -114,6 +111,9 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
         // 기본 싱글톤 정리 호출
         base.OnDestroy();
 
+        // 씬 로드 이벤트 구독 해제
+        SceneManager.sceneLoaded -= OnSceneLoaded;
+
         if (player != null)
         {
             player.OnCenterToggled -= OnPlayerCenterToggled;
@@ -123,13 +123,47 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
     // 플레이어 중심 전환 이벤트: Ready 상태이고 정책이 허용되면 게임 시작
     private void OnPlayerCenterToggled(bool isSun)
     {
-        if (!startOnFirstCenterToggle) return;
-        if (_state == GameState.Ready)
+        // 게임 시작 트리거는 옵션에 따르고, 콤보 초기화는 항상 수행한다.
+        if (_state == GameState.Ready && startOnFirstCenterToggle)
         {
             StartGame();
         }
-        // 공전 중심이 바뀌면 콤보 초기화
+        // 공전 중심이 바뀌면 콤보 초기화(게임 상태/옵션과 무관하게 적용)
         _comboCount = 0;
+    }
+
+    // 씬 로드 시 레퍼런스 재바인딩 및 초기화
+    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        // 새 씬의 오브젝트로 참조를 갱신하고, Ready 상태로 초기화
+        BindSceneReferences();
+        ToReady();
+    }
+
+    // 현재 씬의 Player/Spawner 참조 및 이벤트 재구독 처리
+    private void BindSceneReferences()
+    {
+        // 기존 구독 해제
+        if (player != null)
+        {
+            try { player.OnCenterToggled -= OnPlayerCenterToggled; } catch {}
+        }
+
+        // 새 참조 탐색
+        player = FindFirstObjectByType<PlayerController>();
+        if (player == null)
+        {
+            Debug.LogWarning("[GameManager] PlayerController 참조가 없습니다. 씬에 배치했는지 또는 스크립트에서 연결했는지 확인해 주세요.");
+        }
+        else
+        {
+            player.OnCenterToggled += OnPlayerCenterToggled;
+        }
+
+        if (asteroidSpawner == null)
+        {
+            asteroidSpawner = FindFirstObjectByType<ObjectSpawner>();
+        }
     }
 
     // 상태 전환 공통 처리

@@ -74,11 +74,25 @@
 2025-09-02 19:27 | fix | 슈팅스타 이탈 기준을 카메라 사각형+마진으로 분리 적용(ObjectSpawner 확장) | Assets/Scripts/Game/ObjectSpawner.cs,Assets/Scripts/Game/ShootingStar.cs
 2025-09-02 19:28 | feat | 기즈모 보강 — 슈팅스타용 사각형 디스폰 경계(카메라 뷰+마진) 시각화 추가 | Assets/Scripts/Game/ObjectSpawner.cs
 
-<!-- COMMIT_BOOKMARK -->
-
 2025-09-03 01:10 | feat | 태양→지구 빔 정렬/수명 보정 스크립트 추가(SunBeamVfx) | Assets/Scripts/Player/SunBeamVfx.cs
 2025-09-03 01:40 | refactor | SunBeamVfx를 Local 시뮬레이션 공간 기반으로 동작하도록 옵션/경고 수정 | Assets/Scripts/Player/SunBeamVfx.cs
 2025-09-03 01:43 | refactor | SunBeamVfx에 정렬 축 선택/반전 옵션 추가(Up/Right/Forward) | Assets/Scripts/Player/SunBeamVfx.cs
 2025-09-03 01:47 | refactor | SunBeamVfx 정렬 로직을 Forward 고정으로 단순화(옵션 제거) | Assets/Scripts/Player/SunBeamVfx.cs
 2025-09-03 01:59 | refactor | SunBeamVfx의 자동 수명 보정 로직 제거(파티클 시스템에서 제어) | Assets/Scripts/Player/SunBeamVfx.cs
 2025-09-03 02:00 | refactor | SunBeamVfx에서 useLocalSimulationSpace/alignForwardToEarth 옵션 제거 및 Local+Forward 고정 | Assets/Scripts/Player/SunBeamVfx.cs
+
+ 
+
+2025-09-03 15:52 | feat | 슈팅스타 예측 경로(LineRenderer) 구현 — 전체 경로 고정+알파로 앞부분 지우기, 타일링 1회 설정 | Assets/Scripts/Game/ShootingStar.cs
+2025-09-03 16:10 | feat | 슈팅스타 스폰/디스폰 로직 수정 — 시작/도착 지점: 카메라 뷰~마진 띠 영역, 디스폰: u>=1로 통일 | Assets/Scripts/Game/ObjectSpawner.cs,Assets/Scripts/Game/ShootingStar.cs
+2025-09-03 16:16 | fix | 슈팅스타 경유 지점 정확 통과(viaProgress 기반 핸들 역산) | Assets/Scripts/Game/ShootingStar.cs
+2025-09-03 16:16 | refactor | trajectoryMaterial 및 라인 소팅 관련 변수 제거(정렬은 LineRenderer에서 직접 설정) | Assets/Scripts/Game/ShootingStar.cs
+2025-09-03 16:22 | fix | 슈팅스타 도착 지점 로직 개선 — 경유 지점 방향으로 뷰 경계~마진 경계 사이에서 샘플 | Assets/Scripts/Game/ObjectSpawner.cs
+2025-09-03 16:25 | fix | 'dir' 변수 중복 선언 오류 해결 — 로컬명 충돌 회피(toViaDir) | Assets/Scripts/Game/ObjectSpawner.cs
+2025-09-03 16:36 | refactor | 슈팅스타 경로를 직선으로 단순화(Bezier 제거), 출발/경유/도착 동일 로직(밴드 샘플) 적용 | Assets/Scripts/Game/ShootingStar.cs,Assets/Scripts/Game/ObjectSpawner.cs
+2025-09-03 16:52 | refactor | 슈팅스타 경로 로직 변경 — 도착 지점: (0,0) 기준 거울, 이동: 간단한 포물선 오프셋(4u(1-u)) 적용, 경유 지점 로직/변수 제거 | Assets/Scripts/Game/ObjectSpawner.cs,Assets/Scripts/Game/ShootingStar.cs
+2025-09-03 17:16 | feat | 슈팅스타 경로가 플레이어를 관통하도록 조정 — 가로 경로는 y=플레이어y+랜덤오프셋, 세로 경로는 x=플레이어x+랜덤오프셋으로 정렬. 포물선 오프셋 방향도 축 기준으로 고정 | Assets/Scripts/Game/ObjectSpawner.cs,Assets/Scripts/Game/ShootingStar.cs
+2025-09-03 17:35 | fix | 슈팅스타 경로가 직선이 되는 문제 수정 — 2차 베지어로 변경하고, u=0.5에서 플레이어 축(+오프셋) 통과 지점을 보장하도록 제어점 산출. 스포너는 passPoint만 계산해 전달 | Assets/Scripts/Game/ObjectSpawner.cs,Assets/Scripts/Game/ShootingStar.cs
+2025-09-03 17:35 | fix | 다시하기 후 중심 전환 시 콤보가 초기화되지 않는 버그 수정 — StartOnFirstCenterToggle 옵션과 무관하게 중심 전환마다 콤보를 0으로 리셋 | Assets/Scripts/Game/GameManager.cs
+2025-09-03 17:39 | fix | 씬 재시작 시 싱글톤 인스턴스의 구독/초기화 누락 보완 — sceneLoaded에서 Player/Spawner 재바인딩 및 ToReady 재호출로 콤보/점수/상태 초기화 보장 | Assets/Scripts/Game/GameManager.cs
+<!-- COMMIT_BOOKMARK -->

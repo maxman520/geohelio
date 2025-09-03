@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Pool;
 using Cysharp.Threading.Tasks;
-// using TMPro; // 플로팅 텍스트 로직은 ScoreFloatingText 컴포넌트로 이동
 
 // 소행성 스포너: 초기화 시 초기 배치를 만들고, 주기적으로 스폰을 수행한다.
 // 동작 규칙 개요:
@@ -46,10 +45,10 @@ public class ObjectSpawner : MonoBehaviour
     [Header("슈팅스타")]
     [Tooltip("슈팅스타 프리팹(화면 밖→포물선 경로→화면 밖)")]
     [SerializeField] private GameObject shootingStarPrefab;
-    [Tooltip("슈팅스타 경유점(플레이어 공전 중심 기준) 오프셋 반경 범위")]
-    [SerializeField] private Vector2 shootingStarOffsetRadiusRange = new Vector2(0.5f, 2.0f);
     [Tooltip("슈팅스타 속도 범위(단위/초)")]
     [SerializeField] private Vector2 shootingStarSpeedRange = new Vector2(4f, 7f);
+    [Tooltip("플레이어 관통 보정용 오프셋 범위(축 기준 랜덤). 가로 경로는 y, 세로 경로는 x에 적용")]
+    [SerializeField] private Vector2 shootingStarPassOffsetRange = new Vector2(-0.6f, 0.6f);
     [Tooltip("첫 생성까지의 최소 지연(첫 탭 이후, 초)")]
     [SerializeField] private float shootingStarInitialDelay = 10f;
     [Tooltip("최대 동시 개수 도달 시 쿨타임(초)")]
@@ -147,6 +146,7 @@ public class ObjectSpawner : MonoBehaviour
         if (shootingStarPostMaxCooldown < 0f) shootingStarPostMaxCooldown = 0f;
         if (shootingStarRandomDelayRange.x < 0f) shootingStarRandomDelayRange.x = 0f;
         if (shootingStarRandomDelayRange.y < shootingStarRandomDelayRange.x) shootingStarRandomDelayRange.y = shootingStarRandomDelayRange.x;
+        if (shootingStarPassOffsetRange.y < shootingStarPassOffsetRange.x) shootingStarPassOffsetRange.y = shootingStarPassOffsetRange.x;
 
         if (scoreFloatingTextPrefab != null)
         {
@@ -347,32 +347,117 @@ public class ObjectSpawner : MonoBehaviour
         CleanupShootingList();
         if (_spawnedShootingStars.Count >= shootingStarMaxAlive) return false;
 
-        // 카메라 중심과 경계 계산
+        // 직교 카메라라면: 카메라 뷰 사각형과 (뷰+마진) 사각형 사이의 띠 영역에서 시작 지점을 선택
+        if (_camera != null && _camera.orthographic)
+        {
+            if (!TryGetPointInCameraBand(out Vector3 start)) return false;
+            // 도착 지점은 (0,0) 기준 거울 위치로 설정
+            Vector3 end = new Vector3(-start.x, -start.y, start.z);
+
+            // 경로 방향(가로/세로)을 판정 후, u=0.5에서 플레이어 축(+오프셋)을 통과하도록 passPoint를 설정
+            Vector3 playerPos = Vector3.zero;
+            if (_player != null) { var pt = _player.transform.position; playerPos = new Vector3(pt.x, pt.y, 0f); }
+            float passOff = Random.Range(shootingStarPassOffsetRange.x, shootingStarPassOffsetRange.y);
+            Vector2 d = end - start;
+            bool horizontal = Mathf.Abs(d.x) >= Mathf.Abs(d.y);
+            Vector3 passPoint;
+            if (horizontal)
+            {
+                // 가로 경로: y를 플레이어 축으로 정렬, x는 중점
+                float y = playerPos.y + passOff;
+                float xMid = 0.5f * (start.x + end.x);
+                passPoint = new Vector3(xMid, y, 0f);
+            }
+            else
+            {
+                // 세로 경로: x를 플레이어 축으로 정렬, y는 중점
+                float x = playerPos.x + passOff;
+                float yMid = 0.5f * (start.y + end.y);
+                passPoint = new Vector3(x, yMid, 0f);
+            }
+
+            // 속도 선택
+            float spd = Random.Range(Mathf.Min(shootingStarSpeedRange.x, shootingStarSpeedRange.y), Mathf.Max(shootingStarSpeedRange.x, shootingStarSpeedRange.y));
+            SpawnShootingAt(start, end, passPoint, spd);
+            return true;
+        }
+
+        // 폴백(원근 카메라 등): 카메라 중심 원 둘레에서 시작점을 고르고, 도착은 (0,0) 기준 거울 위치
         Vector3 camCenter = Vector3.zero;
         if (_camera != null)
         {
             var cp = _camera.transform.position; camCenter = new Vector3(cp.x, cp.y, 0f);
         }
-        float baseR = GetSpawnRadiusWorld() + Mathf.Max(0f, despawnMargin) + 0.5f; // 조금 더 밖에서 시작/종료
-
-        // 시작/종료 지점은 반대편 원둘레 근방으로 설정
+        float baseR = GetSpawnRadiusWorld() + Mathf.Max(0f, despawnMargin) + 0.5f;
         float ang = Random.Range(0f, Mathf.PI * 2f);
         Vector2 dir = new Vector2(Mathf.Cos(ang), Mathf.Sin(ang));
-        Vector3 start = camCenter + new Vector3(dir.x, dir.y, 0f) * baseR;
-        Vector3 end = camCenter - new Vector3(dir.x, dir.y, 0f) * baseR;
+        Vector3 startFallback = camCenter + new Vector3(dir.x, dir.y, 0f) * baseR;
+        Vector3 endFallback = new Vector3(-startFallback.x, -startFallback.y, startFallback.z);
+        // u=0.5 통과 지점(passPoint) 계산(축 정렬)
+        Vector3 passPointFb;
+        {
+            Vector3 playerPos = Vector3.zero;
+            if (_player != null) { var pt = _player.transform.position; playerPos = new Vector3(pt.x, pt.y, 0f); }
+            float passOff = Random.Range(shootingStarPassOffsetRange.x, shootingStarPassOffsetRange.y);
+            Vector2 d2 = endFallback - startFallback;
+            bool horizontal2 = Mathf.Abs(d2.x) >= Mathf.Abs(d2.y);
+            if (horizontal2)
+            {
+                float y = playerPos.y + passOff;
+                float xMid = 0.5f * (startFallback.x + endFallback.x);
+                passPointFb = new Vector3(xMid, y, 0f);
+            }
+            else
+            {
+                float x = playerPos.x + passOff;
+                float yMid = 0.5f * (startFallback.y + endFallback.y);
+                passPointFb = new Vector3(x, yMid, 0f);
+            }
+        }
+        float spdFb = Random.Range(Mathf.Min(shootingStarSpeedRange.x, shootingStarSpeedRange.y), Mathf.Max(shootingStarSpeedRange.x, shootingStarSpeedRange.y));
+        SpawnShootingAt(startFallback, endFallback, passPointFb, spdFb);
+        return true;
+    }
 
-        // 컨트롤 포인트: 플레이어 공전 중심 + 랜덤 오프셋(링 범위)
-        Vector3 center = Vector3.zero;
-        if (_player != null && _player.CurrentCenter != null) center = _player.CurrentCenter.position;
-        float rMin = Mathf.Max(0f, Mathf.Min(shootingStarOffsetRadiusRange.x, shootingStarOffsetRadiusRange.y));
-        float rMax = Mathf.Max(rMin, Mathf.Max(shootingStarOffsetRadiusRange.x, shootingStarOffsetRadiusRange.y));
-        float r = Random.Range(rMin, rMax);
-        Vector2 offDir = (Random.insideUnitCircle.sqrMagnitude < 1e-6f) ? Vector2.right : Random.insideUnitCircle.normalized;
-        Vector3 control = center + new Vector3(offDir.x, offDir.y, 0f) * r;
+    // 카메라 뷰 사각형과 (뷰+마진) 사각형 사이의 띠 영역 내 임의의 점을 선택(직교 카메라 전용)
+    // 반환: 성공 시 true, pos는 월드 좌표
+    private bool TryGetPointInCameraBand(out Vector3 pos)
+    {
+        pos = Vector3.zero;
+        if (_camera == null || !_camera.orthographic) return false;
 
-        // 속도 선택
-        float spd = Random.Range(Mathf.Min(shootingStarSpeedRange.x, shootingStarSpeedRange.y), Mathf.Max(shootingStarSpeedRange.x, shootingStarSpeedRange.y));
-        SpawnShootingAt(start, control, end, spd);
+        var cp = _camera.transform.position;
+        float hi = _camera.orthographicSize;                  // inner half-height
+        float wi = _camera.orthographicSize * _camera.aspect; // inner half-width
+        float margin = Mathf.Max(0f, despawnMargin);
+        float ho = hi + margin; // outer half-height
+        float wo = wi + margin; // outer half-width
+
+        const int kMaxTries = 64;
+        for (int i = 0; i < kMaxTries; i++)
+        {
+            float x = Random.Range(cp.x - wo, cp.x + wo);
+            float y = Random.Range(cp.y - ho, cp.y + ho);
+            float dx = Mathf.Abs(x - cp.x);
+            float dy = Mathf.Abs(y - cp.y);
+            bool insideOuter = (dx <= wo && dy <= ho);
+            bool outsideInner = (dx > wi || dy > hi);
+            if (insideOuter && outsideInner)
+            {
+                pos = new Vector3(x, y, 0f);
+                return true;
+            }
+        }
+
+        // 드물게 실패 시, 외곽 테두리 중 하나에서 선택
+        int edge = Random.Range(0, 4);
+        switch (edge)
+        {
+            case 0: pos = new Vector3(Random.Range(cp.x - wo, cp.x + wo), cp.y + ho, 0f); break; // top
+            case 1: pos = new Vector3(Random.Range(cp.x - wo, cp.x + wo), cp.y - ho, 0f); break; // bottom
+            case 2: pos = new Vector3(cp.x - wo, Random.Range(cp.y - ho, cp.y + ho), 0f); break; // left
+            default: pos = new Vector3(cp.x + wo, Random.Range(cp.y - ho, cp.y + ho), 0f); break; // right
+        }
         return true;
     }
 
@@ -745,7 +830,7 @@ public class ObjectSpawner : MonoBehaviour
 
     
 
-    private void SpawnShootingAt(Vector3 start, Vector3 control, Vector3 end, float speed)
+    private void SpawnShootingAt(Vector3 start, Vector3 end, Vector3 passPoint, float speed)
     {
         var go = GetFromPool(shootingStarPrefab);
         go.transform.SetParent(transform, false);
@@ -762,7 +847,7 @@ public class ObjectSpawner : MonoBehaviour
         // 먼저 목록에 추가하여 이동 시작 직후 디스폰되어도 올바른 풀로 복귀되게 함
         _spawnedShootingStars.Add(go.transform);
         star.Initialize(this);
-        star.Launch(start, control, end, speed);
+        star.Launch(start, end, passPoint, speed);
     }
 
     // 플레이어 생존 시간에 따른 장애물 최대 동시 개수(1단계:2, 2단계:3, 3단계+:4)

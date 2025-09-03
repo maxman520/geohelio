@@ -23,7 +23,7 @@ public class GameOverPanel : MonoBehaviour
     public void Show(int finalScore)
     {
         if (root != null) root.SetActive(true);
-        if (scoreText != null) scoreText.text = $"점수: {finalScore}";
+        if (scoreText != null) scoreText.text = $"{finalScore}";
     }
 
     // 패널 숨김
