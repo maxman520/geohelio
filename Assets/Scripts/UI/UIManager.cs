@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.Serialization;
+using Cysharp.Threading.Tasks;
 
 // UI 전역 매니저: 게임오버 등 UI 요소 노출/숨김 제어
 public class UIManager : SingletonMonoBehaviour<UIManager>
@@ -11,34 +12,30 @@ public class UIManager : SingletonMonoBehaviour<UIManager>
     protected override void Awake()
     {
         base.Awake();
-        // 자동 참조 보완
-        if (gameOverPanel == null)
-        {
-            gameOverPanel = FindFirstObjectByType<GameOverPanel>();
-        }
+        // 주의: gameOverPanel은 인스펙터에서 UIManager 자식으로 지정하여 사용한다.
     }
 
     // 게임오버 패널 표시/숨김
     public void ShowGameOver(int finalScore)
     {
-        if (gameOverPanel == null)
-            gameOverPanel = FindFirstObjectByType<GameOverPanel>();
         gameOverPanel?.Show(finalScore);
     }
 
     public void HideGameOver()
     {
-        if (gameOverPanel == null)
-            gameOverPanel = FindFirstObjectByType<GameOverPanel>();
         gameOverPanel?.Hide();
     }
 
     // 버튼 핸들러: GameManager 위임
     public void RequestRetry()
     {
+        // 먼저 게임오버 패널을 즉시 숨겨, 리로드 대기 중에도 패널이 남아있지 않도록 처리
+        HideGameOver();
+
         if (GameManager.Instance != null)
         {
-            GameManager.Instance.RestartGameScene();
+            // 씬 리로드 대신 소프트 리스타트 경로로 진입
+            GameManager.Instance.SoftRestartAsync().Forget();
         }
         else
         {
@@ -58,4 +55,3 @@ public class UIManager : SingletonMonoBehaviour<UIManager>
         }
     }
 }
-

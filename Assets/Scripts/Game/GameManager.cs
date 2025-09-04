@@ -1,6 +1,7 @@
 using System;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using Cysharp.Threading.Tasks;
 
 /// <summary>
 /// 게임 진행 로직을 총괄하는 GameManager.
@@ -189,6 +190,11 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
         OnScoreChanged?.Invoke(_score);
         SetState(GameState.Ready);
 
+        // 플레이어 초기 배치: 중심을 지구로, 지구를 (0,0)으로 이동
+        if (player == null)
+            player = FindFirstObjectByType<PlayerController>();
+        player?.ResetOrbitToEarthAtOrigin();
+
         // 스포너 초기화(초기 배치 생성 + 스폰 시작)
         if (asteroidSpawner == null)
             asteroidSpawner = FindFirstObjectByType<ObjectSpawner>();
@@ -315,6 +321,30 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
     {
         var active = SceneManager.GetActiveScene();
         SceneManager.LoadScene(active.name);
+    }
+
+    /// <summary>
+    /// 소프트 리스타트: 씬 리로드 없이 런타임 상태만 초기화한다.
+    /// - 게임오버 패널 숨김 → Ready 상태 초기화(ObjectSpawner.Initialize 포함) → 1프레임 대기 → (옵션) 즉시 시작
+    /// - startOnFirstCenterToggle=true면 첫 중심 전환까지 Ready 유지, false면 즉시 StartGame 호출
+    /// </summary>
+    public async UniTask SoftRestartAsync()
+    {
+        // UI 정리 및 타임스케일 복원
+        UIManager.Instance?.HideGameOver();
+        if (Time.timeScale != 1f) Time.timeScale = 1f;
+
+        // Ready로 초기화(점수/시간/콤보 리셋 + 스포너 Initialize)
+        ToReady();
+
+        // 한 프레임 양보하여 초기화 반영
+        await UniTask.Yield(PlayerLoopTiming.Update);
+
+        // 정책에 따라 즉시 시작 또는 첫 중심 전환 대기
+        if (!startOnFirstCenterToggle)
+        {
+            StartGame();
+        }
     }
 
     // 회전 중심이 스폰 영역을 벗어났는지 확인하여 필요 시 게임오버 처리

@@ -268,6 +268,39 @@ public class PlayerController : MonoBehaviour
     public Transform CurrentCenter => _center == OrbitCenter.Earth ? earth : sun;
     public bool IsSunCenter => _center == OrbitCenter.Sun;
 
+    /// <summary>
+    /// 공전 중심을 지구로 고정하고, 지구의 월드 좌표를 (0,0)으로 이동시킨다.
+    /// 태양은 현재 지구→태양 방향(없으면 +X)을 기준으로 distance만큼 배치한다.
+    /// 소프트 리스타트 시 초기 상태를 강제하기 위해 사용한다.
+    /// </summary>
+    public void ResetOrbitToEarthAtOrigin()
+    {
+        if (earth == null || sun == null) return;
+
+        // 중심을 지구로 전환
+        _center = OrbitCenter.Earth;
+
+        // 지구를 원점으로 이동(Z는 유지)
+        Vector3 earthPos = earth.position;
+        float z = earthPos.z;
+        earth.position = new Vector3(0f, 0f, z);
+
+        // 방향 결정: 기존 지구→태양 방향 유지, 너무 짧으면 +X 사용
+        Vector3 dir = sun.position - earth.position;
+        if (dir.sqrMagnitude < 1e-6f)
+        {
+            dir = Vector3.right;
+        }
+
+        // 태양을 distance만큼 배치
+        sun.position = earth.position + dir.normalized * Mathf.Max(0f, distance);
+
+        // 빔 갱신
+        UpdateBeam();
+
+        Debug.Log("[PlayerController] 소프트 리스타트 초기화: 중심=지구, 지구를 (0,0)에 배치");
+    }
+
     private void EnsureOrbitUnitCircleCache()
     {
         int seg = Mathf.Clamp(OrbitGizmoSegments, 12, 256);

@@ -98,7 +98,6 @@
 2025-09-04 01:22 | feat | 블랙홀 스프라이트 및 프리팹 추가 | Assets/Prefabs/Blackhole.prefab,Assets/Sprites/\_Objects/Blackhole_Idle.aseprite,Assets/Sprites/\_Objects/Blackhole_Idle1.png
 2025-09-04 01:40 | feat | 블랙홀 프리팹에 흡입 파티클 시스템 추가 | Assets/Prefabs/Blackhole.prefab
 
-<!-- COMMIT_BOOKMARK -->
 2025-09-04 14:21 | feat | 블랙홀 스크립트/스포너 추가(단일 존재 보장, 수명 5s, 20~30s 랜덤 지연, 공전 범위 회피 스폰, 기즈모 시각화) | Assets/Scripts/Game/BlackHole.cs,Assets/Scripts/Game/BlackHoleSpawner.cs
 2025-09-04 14:28 | refactor | BlackHoleSpawner 기능 ObjectSpawner에 통합(루프/스폰 규칙/기즈모), 단일 블랙홀 수명/간격 유지 및 GameOver 연동 | Assets/Scripts/Game/ObjectSpawner.cs
 2025-09-04 14:28 | chore | 사용 중단된 BlackHoleSpawner 삭제 | Assets/Scripts/Game/BlackHoleSpawner.cs
@@ -106,3 +105,14 @@
 2025-09-04 14:43 | fix | ObjectSpawner의 #endregion 중복으로 인한 전처리기 오류 해결(불필요한 종료 지시문 제거) | Assets/Scripts/Game/ObjectSpawner.cs
 2025-09-04 14:56 | feat | 블랙홀이 플레이어를 끌어당기는 힘 추가(세기/범위 직렬화 가능) | Assets/Scripts/Game/BlackHole.cs
 2025-09-04 15:02 | refactor | 블랙홀 흡인 방식을 물리 힘(AddForce)에서 공전 중심 이동으로 변경 | Assets/Scripts/Game/BlackHole.cs
+
+<!-- COMMIT_BOOKMARK -->
+2025-09-04 15:17 | fix | 다시하기 후 게임오버 패널이 표시되지 않는 문제 수정(비활성 오브젝트 포함 탐색으로 참조 재획득) | Assets/Scripts/UI/UIManager.cs
+2025-09-04 15:29 | refactor | 캔버스를 UIManager 자식으로 통합한 전제에 맞춰 Ensure/동적 재탐색 로직 제거 | Assets/Scripts/UI/UIManager.cs
+2025-09-04 15:32 | fix | 다시하기 클릭 시 즉시 게임오버 패널 숨김 처리로 잔존 UI 문제 해결 | Assets/Scripts/UI/UIManager.cs
+2025-09-04 15:46 | docs | 소프트 리스타트 전환 리팩터링 계획서 추가 | SOFT_RESTART_REFACTOR_PLAN.md
+2025-09-04 15:52 | feat | 소프트 리스타트 도입: GameManager.SoftRestartAsync 추가 및 UI 다시하기 경로 전환 | Assets/Scripts/Game/GameManager.cs,Assets/Scripts/UI/UIManager.cs
+2025-09-04 15:52 | fix | ObjectSpawner.Initialize에서 플레이어 중심 전환 이벤트 재구독(소프트 리스타트 후 첫 신호 수신 보장) | Assets/Scripts/Game/ObjectSpawner.cs
+2025-09-04 15:57 | feat | 소프트 리스타트 시 플레이어 공전 중심을 지구로, 지구를 (0,0)으로 이동하도록 초기화 | Assets/Scripts/Player/PlayerController.cs,Assets/Scripts/Game/GameManager.cs
+2025-09-04 15:59 | fix | 소행성 이동을 GameManager가 Playing 상태일 때만 수행하도록 제한 | Assets/Scripts/Game/Asteroid.cs
+2025-09-04 16:11 | feat | 플레이어 공전 원 내부 금지 규칙에 orbitGap(지구/태양 크기 고려) 반영 및 직렬화 필드 추가 | Assets/Scripts/Game/ObjectSpawner.cs

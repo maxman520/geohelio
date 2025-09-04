@@ -8,17 +8,19 @@ using Random = UnityEngine.Random;
 
 // 소행성 스포너: 초기화 시 초기 배치를 만들고, 주기적으로 스폰을 수행한다.
 // 동작 규칙 개요:
-// 1) 자동 시작하지 않음. 2) Initialize 시 기존 소행성 정리 후 초기 개수 배치
-// 3) Initialize 끝에서 스폰 시작 4) 플레이어 공전 원 안쪽은 스폰 금지(규칙 4, 초기/일반 공통 적용)
+// 1) 자동 시작하지 않음.
+// 2) Initialize 시 기존 소행성 정리 후 초기 개수 배치
+// 3) Initialize 끝에서 스폰 시작
+// 4) 플레이어 공전 원 안쪽은 스폰 금지(규칙 4, 초기/일반 공통 적용)
 // 5) 기존 소행성과 최소 간격 0.5 유지(규칙 5)
-// 7) 게임 진행 중에는 주기적으로 스폰, 중지 시 스폰 정지
+// 6) 게임 진행 중에는 주기적으로 스폰, 중지 시 스폰 정지
 public class ObjectSpawner : MonoBehaviour
 {
     [Header("설정")]
     [SerializeField] private GameObject asteroidPrefab;      // 소행성 프리팹
     [SerializeField] private float spawnInterval = 1.0f;     // 스폰 간격(초)
     [SerializeField] private int maxAlive = 50;               // 최대 동시 소행성 수
-    [SerializeField] private float spawnRadius = 6f;          // 스폰 반경 기본값(카메라 미발견 시 폴백)
+    [SerializeField] private float spawnRadius = 6f;          // 스폰 반경 기본값(카메라 미발견 시 폴백 값)
     [SerializeField] private int initialCount = 8;            // 초기 생성 개수(Initialize 시 사용)
     [Tooltip("기존 월드에 남아있는 소행성 제거용 태그(선택). Initialize에서 사용")]
     [SerializeField] private string asteroidTag = "";         // 삭제/검색용 태그
@@ -26,6 +28,8 @@ public class ObjectSpawner : MonoBehaviour
     [Header("규칙")]
     [SerializeField] private float minSeparation = 0.5f;      // 최소 간격 0.5 유지(규칙 5)
     [SerializeField] private float orbitEpsilon = 0.001f;     // 공전 원 내부 판정 여유값
+    [Tooltip("플레이어 공전 원 내부 금지 시 추가로 확보할 여유 반경(지구/태양 크기 고려)")]
+    [SerializeField] private float orbitGap = 0.5f;           // 공전 반지름에 더해 내부 금지 반경을 넓히는 갭
     [Tooltip("카메라 가시 영역 밖에서 추가로 허용할 여유 반경(월드 단위)")]
     [SerializeField] private float despawnMargin = 0.75f;     // 화면 경계 밖 여유 공간. 디스폰 마진
 
@@ -154,6 +158,7 @@ public class ObjectSpawner : MonoBehaviour
         if (minSeparation < 0f) minSeparation = 0f;
         if (orbitEpsilon < 0f) orbitEpsilon = 0f;
         if (despawnMargin < 0f) despawnMargin = 0f;
+        if (orbitGap < 0f) orbitGap = 0f;
         if (obstacleSpawnInterval < 0.05f) obstacleSpawnInterval = 0.05f;
         if (obstacleMinSeparation < 0f) obstacleMinSeparation = 0f;
         if (obstacleStageDuration < 1f) obstacleStageDuration = 1f;
@@ -245,6 +250,23 @@ public class ObjectSpawner : MonoBehaviour
 
         // 블랙홀 루프 정지 및 정리
         StopBlackHoleLoop(despawn: true);
+
+        // 소프트 리스타트 대비: 플레이어 중심 전환 이벤트를 다시 구독하여
+        // 다음 라운드의 첫 신호를 받을 수 있도록 재설정한다(중복 방지 위해 선해제 후 재구독).
+        if (_player == null)
+        {
+            _player = FindFirstObjectByType<PlayerController>();
+            if (_player == null)
+            {
+                Debug.LogWarning("[ObjectSpawner] Initialize 시 PlayerController를 찾지 못했습니다. 시작 신호를 수신하지 못할 수 있습니다.");
+            }
+        }
+
+        if (_player != null)
+        {
+            try { _player.OnCenterToggled -= OnPlayerCenterToggled; } catch { }
+            _player.OnCenterToggled += OnPlayerCenterToggled;
+        }
     }
 
     // 시작 신호 처리: 주기 스폰 시작(Initialize에서 이미 초기 배치 완료)
@@ -627,7 +649,8 @@ public class ObjectSpawner : MonoBehaviour
         if (_player != null && _player.CurrentCenter != null)
         {
             Vector3 oc = _player.CurrentCenter.position;
-            float orbitR = Mathf.Max(0f, _player.Distance);
+            // 플레이어 공전 반경 + 끝 오브젝트(지구/태양)의 크기를 고려한 갭을 더해 금지 영역을 확장한다.
+            float orbitR = Mathf.Max(0f, _player.Distance + orbitGap);
             float d2 = (pos - oc).sqrMagnitude;
             if (d2 < (orbitR - orbitEpsilon) * (orbitR - orbitEpsilon))
             {
@@ -695,7 +718,8 @@ public class ObjectSpawner : MonoBehaviour
         if (!ignoreOrbitRule && _player != null && _player.CurrentCenter != null)
         {
             Vector3 oc = _player.CurrentCenter.position;
-            float orbitR = Mathf.Max(0f, _player.Distance);
+            // 플레이어 공전 반경 + 끝 오브젝트(지구/태양) 크기 고려 갭 반영
+            float orbitR = Mathf.Max(0f, _player.Distance + orbitGap);
             float d2 = (pos - oc).sqrMagnitude;
             if (d2 < (orbitR - orbitEpsilon) * (orbitR - orbitEpsilon))
             {
@@ -1179,7 +1203,4 @@ public class ObjectSpawner : MonoBehaviour
         Gizmos.DrawLine(tr, tl);
         Gizmos.DrawLine(tl, bl);
     }
-
-    // ---------- 블랙홀 기즈모 ----------
-    // 하단의 OnValidate는 상단(#if UNITY_EDITOR) 블록에서 통합 관리합니다.
 }

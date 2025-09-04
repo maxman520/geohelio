@@ -13,10 +13,6 @@ public class SunBeamVfx : MonoBehaviour
     [Tooltip("파티클 시스템(미지정 시 자기 자신에서 탐색)")]
     [SerializeField] private ParticleSystem particle;
 
-    [Header("정렬/시뮬레이션")]
-    [Tooltip("로컬 Forward(+Z) 축을 지구 방향으로 정렬하고 Local 시뮬레이션 적용")]
-    [SerializeField] private bool info = true; // 인스펙터 표기용(기능 플래그 아님)
-
     private ParticleSystem.MainModule _main;
     private bool _mainCached;
     

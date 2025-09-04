@@ -274,6 +274,13 @@ public class Asteroid : MonoBehaviour
 
     private void Update()
     {
+        // 게임이 진행 중(Playing)일 때만 이동 로직 수행
+        var gm = GameManager.Instance;
+        if (gm == null || gm.State != GameManager.GameState.Playing)
+        {
+            return;
+        }
+
         if (_driftActive && !_exploding)
         {
             // 간단한 부유감: 선형 드리프트만 적용(2D 평면)
