@@ -1,7 +1,10 @@
+using System;
 using System.Collections.Generic;
+using System.Threading;
 using UnityEngine;
 using UnityEngine.Pool;
 using Cysharp.Threading.Tasks;
+using Random = UnityEngine.Random;
 
 // 소행성 스포너: 초기화 시 초기 배치를 만들고, 주기적으로 스폰을 수행한다.
 // 동작 규칙 개요:
@@ -58,6 +61,18 @@ public class ObjectSpawner : MonoBehaviour
     [Tooltip("슈팅스타 동시 최대 수")]
     [SerializeField] private int shootingStarMaxAlive = 6;
 
+    [Header("블랙홀")]
+    [Tooltip("블랙홀 프리팹(BlackHole 컴포넌트 포함 권장)")]
+    [SerializeField] private GameObject blackHolePrefab;
+    [Tooltip("블랙홀 스폰 범위 반경(월드 단위). 중심은 (0,0)")]
+    [SerializeField] private float blackHoleSpawnRadius = 6f;
+    [Tooltip("블랙홀 수명(초)")]
+    [SerializeField] private float blackHoleLifetimeSeconds = 5f;
+    [Tooltip("블랙홀 스폰 지연 범위(초). 초기/종료 후 동일 적용")]
+    [SerializeField] private Vector2 blackHoleSpawnDelayRange = new Vector2(20f, 30f);
+    [Tooltip("블랙홀: 공전 원 내부 판정 여유값")]
+    [SerializeField] private float blackHoleOrbitEpsilon = 0.001f;
+
     // 내부 진행 상태
     private float _timer;
     private float _obstacleTimer;
@@ -72,9 +87,13 @@ public class ObjectSpawner : MonoBehaviour
     private Camera _camera;
     private bool _startSignalReceived;           // 시작 신호(첫 중심 전환) 수신 여부
     private bool _initializedAfterReset;         // Initialize 이후 상태 플래그
+    // 블랙홀 진행 상태
+    private CancellationTokenSource _blackHoleCts;
+    private GameObject _activeBlackHole;
 
     // 스포너 파괴 시 진행 중 애니메이션이 있더라도 자연 종료에 맡긴다(컴포넌트가 자체 처리).
 
+    #region 일반 공통
     private void Awake()
     {
         // 플레이어 참조(궤도 규칙 적용 시 필요)
@@ -156,6 +175,13 @@ public class ObjectSpawner : MonoBehaviour
                 Debug.LogWarning("[ObjectSpawner] scoreFloatingTextPrefab에 ScoreFloatingText 컴포넌트가 없습니다.", scoreFloatingTextPrefab);
             }
         }
+
+        // 블랙홀 관련 값 보정
+        if (blackHoleSpawnRadius < 0f) blackHoleSpawnRadius = 0f;
+        if (blackHoleLifetimeSeconds < 0f) blackHoleLifetimeSeconds = 0f;
+        if (blackHoleSpawnDelayRange.x < 0f) blackHoleSpawnDelayRange.x = 0f;
+        if (blackHoleSpawnDelayRange.y < blackHoleSpawnDelayRange.x) blackHoleSpawnDelayRange.y = blackHoleSpawnDelayRange.x;
+        if (blackHoleOrbitEpsilon < 0f) blackHoleOrbitEpsilon = 0f;
     }
 #endif
 
@@ -167,14 +193,13 @@ public class ObjectSpawner : MonoBehaviour
         }
 
         // 점수 텍스트는 외부 토큰 관리가 필요 없으므로 별도 정리 없음
+        StopBlackHoleLoop(despawn: true);
     }
 
     // GameManager 이벤트에 의존하지 않고, 실제 회전 중심 전환(탭)에 의해만 시작되도록 한다.
 
     private void Update()
     {
-        // 이벤트 기반으로 시작 신호를 처리하므로 폴링 제거
-
         if (!_running) return;
         _timer += Time.deltaTime;
         if (_timer >= spawnInterval)
@@ -217,6 +242,9 @@ public class ObjectSpawner : MonoBehaviour
         
         _initializedAfterReset = true;
         Debug.Log("[ObjectSpawner] 초기화 완료: 초기 배치 생성 후 시작 신호(첫 중심 전환) 대기");
+
+        // 블랙홀 루프 정지 및 정리
+        StopBlackHoleLoop(despawn: true);
     }
 
     // 시작 신호 처리: 주기 스폰 시작(Initialize에서 이미 초기 배치 완료)
@@ -243,8 +271,13 @@ public class ObjectSpawner : MonoBehaviour
         {
             _player.OnCenterToggled -= OnPlayerCenterToggled;
         }
-    }
 
+        // 블랙홀 루프 시작(초기 20~30초 랜덤 지연 후 스폰)
+        StartBlackHoleLoop();
+    }
+    #endregion // 일반 공통
+
+    #region 슈팅스타
     private void UpdateShootingStarSchedule()
     {
         if (_shootingStarNextAttemptTime < 0f) return; // 아직 시작 신호 전
@@ -281,66 +314,6 @@ public class ObjectSpawner : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// 외부에서 수동으로 스폰을 시작할 때 사용(테스트/디버그용).
-    /// </summary>
-    public void Begin()
-    {
-        _running = true; // 수동 시작: 스폰 시작
-        _timer = 0f;
-        Debug.Log("[ObjectSpawner] 스폰 시작");
-    }
-
-    /// <summary>
-    /// 스폰 중지(게임 일시정지/종료 등).
-    /// </summary>
-    public void Stop()
-    {
-        _running = false;
-        Debug.Log("[ObjectSpawner] 스폰 중지");
-    }
-
-    // 소행성 한 개 스폰 시도
-    private void TrySpawn(bool ignoreOrbitRule)
-    {
-        if (asteroidPrefab == null) return;
-        CleanupList();
-        if (_spawned.Count >= maxAlive) return;
-
-        // 유효 위치 탐색(최대 시도 횟수 제한)
-        const int kMaxTries = 24;
-        for (int t = 0; t < kMaxTries; t++)
-        {
-            if (TryGetSpawnPosition(ignoreOrbitRule, out Vector3 pos))
-            {
-                SpawnAt(pos);
-                return;
-            }
-        }
-        // 유효 위치를 찾지 못한 경우(드문 상황)
-    }
-
-    // 장애물 소행성 스폰
-    private void TrySpawnObstacle()
-    {
-        if (obstacleAsteroidPrefab == null) return;
-        CleanupObstacleList();
-
-        int maxObstacles = GetObstacleMaxAlive();
-        if (_spawnedObstacles.Count >= maxObstacles) return;
-
-        const int kMaxTries = 24;
-        for (int t = 0; t < kMaxTries; t++)
-        {
-            if (TryGetObstacleSpawnPosition(out Vector3 pos))
-            {
-                SpawnObstacleAt(pos);
-                return;
-            }
-        }
-    }
-
-    // 슈팅스타 스폰
     private bool TrySpawnShootingStar()
     {
         if (shootingStarPrefab == null) return false;
@@ -418,6 +391,188 @@ public class ObjectSpawner : MonoBehaviour
         SpawnShootingAt(startFallback, endFallback, passPointFb, spdFb);
         return true;
     }
+    #endregion // 슈팅스타
+
+    /// <summary>
+    /// 외부에서 수동으로 스폰을 시작할 때 사용
+    /// </summary>
+    public void Begin()
+    {
+        _running = true; // 수동 시작: 스폰 시작
+        _timer = 0f;
+        Debug.Log("[ObjectSpawner] 스폰 시작");
+
+        // 수동 시작 시에도 블랙홀 루프를 함께 시작
+        StartBlackHoleLoop();
+    }
+
+    /// <summary>
+    /// 스폰 중지(게임 일시정지/종료 등).
+    /// </summary>
+    public void Stop()
+    {
+        _running = false;
+        Debug.Log("[ObjectSpawner] 스폰 중지");
+
+        // 블랙홀 루프 중지 및 디스폰
+        StopBlackHoleLoop(despawn: true);
+    }
+
+    #region 블랙홀
+    // -------------------- 블랙홀 루프(UniTask) --------------------
+    private void StartBlackHoleLoop()
+    {
+        if (_blackHoleCts != null) return; // 이미 동작 중
+        _blackHoleCts = new CancellationTokenSource();
+        RunBlackHoleLoopAsync(_blackHoleCts.Token).Forget();
+        Debug.Log("[ObjectSpawner] 블랙홀 스폰 루프 시작");
+    }
+
+    private void StopBlackHoleLoop(bool despawn)
+    {
+        if (_blackHoleCts != null)
+        {
+            _blackHoleCts.Cancel();
+            _blackHoleCts.Dispose();
+            _blackHoleCts = null;
+        }
+        if (despawn)
+        {
+            DespawnBlackHoleNow();
+        }
+    }
+
+    private async UniTaskVoid RunBlackHoleLoopAsync(CancellationToken ct)
+    {
+        while (!ct.IsCancellationRequested)
+        {
+            float delay = GetBlackHoleRandomDelay();
+            try
+            {
+                await UniTask.Delay(TimeSpan.FromSeconds(delay), cancellationToken: ct);
+            }
+            catch (OperationCanceledException) { break; }
+
+            if (ct.IsCancellationRequested) break;
+            if (_activeBlackHole != null) continue; // 단일 개체 보장
+
+            // 스폰 시도(여러 번 샘플링)
+            const int kMaxTry = 32;
+            bool ok = false; Vector3 pos = Vector3.zero;
+            for (int i = 0; i < kMaxTry; i++)
+            {
+                if (TryGetBlackHoleSpawnPosition(out pos)) { ok = true; break; }
+            }
+            if (!ok) continue; // 다음 사이클로
+
+            SpawnBlackHoleAt(pos);
+
+            try
+            {
+                await UniTask.Delay(TimeSpan.FromSeconds(Mathf.Max(0.01f, blackHoleLifetimeSeconds)), cancellationToken: ct);
+            }
+            catch (OperationCanceledException) { break; }
+
+            DespawnBlackHoleNow();
+        }
+    }
+
+    private float GetBlackHoleRandomDelay()
+    {
+        float a = Mathf.Max(0f, blackHoleSpawnDelayRange.x);
+        float b = Mathf.Max(a, blackHoleSpawnDelayRange.y);
+        return Random.Range(a, b);
+    }
+
+    private bool TryGetBlackHoleSpawnPosition(out Vector3 pos)
+    {
+        // (0,0) 중심, 반경 = blackHoleSpawnRadius 내부 균등 샘플링
+        Vector2 r = Random.insideUnitCircle * Mathf.Max(0f, blackHoleSpawnRadius);
+        pos = new Vector3(r.x, r.y, 0f);
+
+        // 플레이어 공전 원 내부 금지(현재 중심 기준)
+        if (_player != null && _player.CurrentCenter != null)
+        {
+            Vector3 center = _player.CurrentCenter.position; center.z = 0f;
+            float orbitR = Mathf.Max(0f, _player.Distance);
+            float or2 = (orbitR - Mathf.Max(0f, blackHoleOrbitEpsilon));
+            or2 = or2 * or2;
+            float d2 = (pos - center).sqrMagnitude;
+            if (d2 < or2)
+            {
+                return false; // 공전 원 내부 금지
+            }
+        }
+        return true;
+    }
+
+    private void SpawnBlackHoleAt(Vector3 pos)
+    {
+        if (blackHolePrefab == null)
+        {
+            Debug.LogWarning("[ObjectSpawner] blackHolePrefab이 설정되지 않아 블랙홀을 스폰할 수 없습니다.");
+            return;
+        }
+        if (_activeBlackHole != null) return;
+
+        _activeBlackHole = Instantiate(blackHolePrefab, pos, Quaternion.identity);
+        _activeBlackHole.transform.SetParent(transform, true);
+        // 2D 평면 보정
+        var e = _activeBlackHole.transform.eulerAngles;
+        _activeBlackHole.transform.eulerAngles = new Vector3(0f, 0f, e.z);
+    }
+
+    private void DespawnBlackHoleNow()
+    {
+        if (_activeBlackHole == null) return;
+        Destroy(_activeBlackHole);
+        _activeBlackHole = null;
+    }
+    #endregion // 블랙홀
+
+    #region 소행성
+    // 소행성 한 개 스폰 시도
+    private void TrySpawn(bool ignoreOrbitRule)
+    {
+        if (asteroidPrefab == null) return;
+        CleanupList();
+        if (_spawned.Count >= maxAlive) return;
+
+        // 유효 위치 탐색(최대 시도 횟수 제한)
+        const int kMaxTries = 24;
+        for (int t = 0; t < kMaxTries; t++)
+        {
+            if (TryGetSpawnPosition(ignoreOrbitRule, out Vector3 pos))
+            {
+                SpawnAt(pos);
+                return;
+            }
+        }
+        // 유효 위치를 찾지 못한 경우(드문 상황)
+    }
+
+    #region 장애물 소행성
+    // 장애물 소행성 스폰 (별도 영역에서 상세 구현)
+    private void TrySpawnObstacle()
+    {
+        if (obstacleAsteroidPrefab == null) return;
+        CleanupObstacleList();
+
+        int maxObstacles = GetObstacleMaxAlive();
+        if (_spawnedObstacles.Count >= maxObstacles) return;
+
+        const int kMaxTries = 24;
+        for (int t = 0; t < kMaxTries; t++)
+        {
+            if (TryGetObstacleSpawnPosition(out Vector3 pos))
+            {
+                SpawnObstacleAt(pos);
+                return;
+            }
+        }
+    }
+
+    #endregion // 장애물 소행성
 
     // 카메라 뷰 사각형과 (뷰+마진) 사각형 사이의 띠 영역 내 임의의 점을 선택(직교 카메라 전용)
     // 반환: 성공 시 true, pos는 월드 좌표
@@ -710,6 +865,7 @@ public class ObjectSpawner : MonoBehaviour
 
         _spawned.Add(go.transform);
     }
+    #endregion // 소행성
 
     // 점수 팝업 표시
     public void ShowScorePopup(int amount, Vector3 worldPos)
@@ -899,6 +1055,11 @@ public class ObjectSpawner : MonoBehaviour
             Gizmos.color = new Color(0.7f, 0.2f, 1f, 0.9f); // 보라색: 사각형 경계
             DrawWireRect(rc, halfW, halfH);
         }
+
+        // 블랙홀 스폰 범위(월드 원점 기준, 직렬화 반경)
+        // 블랙홀 스폰 반경(항상 표시, 파란색 고정)
+        Gizmos.color = Color.blue;
+        Gizmos.DrawWireSphere(Vector3.zero, Mathf.Max(0f, blackHoleSpawnRadius));
     }
 
     // 에디터/플레이 공통: 기즈모 반경 계산을 안정화
@@ -1018,4 +1179,7 @@ public class ObjectSpawner : MonoBehaviour
         Gizmos.DrawLine(tr, tl);
         Gizmos.DrawLine(tl, bl);
     }
+
+    // ---------- 블랙홀 기즈모 ----------
+    // 하단의 OnValidate는 상단(#if UNITY_EDITOR) 블록에서 통합 관리합니다.
 }

@@ -81,8 +81,6 @@
 2025-09-03 01:59 | refactor | SunBeamVfx의 자동 수명 보정 로직 제거(파티클 시스템에서 제어) | Assets/Scripts/Player/SunBeamVfx.cs
 2025-09-03 02:00 | refactor | SunBeamVfx에서 useLocalSimulationSpace/alignForwardToEarth 옵션 제거 및 Local+Forward 고정 | Assets/Scripts/Player/SunBeamVfx.cs
 
- 
-
 2025-09-03 15:52 | feat | 슈팅스타 예측 경로(LineRenderer) 구현 — 전체 경로 고정+알파로 앞부분 지우기, 타일링 1회 설정 | Assets/Scripts/Game/ShootingStar.cs
 2025-09-03 16:10 | feat | 슈팅스타 스폰/디스폰 로직 수정 — 시작/도착 지점: 카메라 뷰~마진 띠 영역, 디스폰: u>=1로 통일 | Assets/Scripts/Game/ObjectSpawner.cs,Assets/Scripts/Game/ShootingStar.cs
 2025-09-03 16:16 | fix | 슈팅스타 경유 지점 정확 통과(viaProgress 기반 핸들 역산) | Assets/Scripts/Game/ShootingStar.cs
@@ -95,4 +93,16 @@
 2025-09-03 17:35 | fix | 슈팅스타 경로가 직선이 되는 문제 수정 — 2차 베지어로 변경하고, u=0.5에서 플레이어 축(+오프셋) 통과 지점을 보장하도록 제어점 산출. 스포너는 passPoint만 계산해 전달 | Assets/Scripts/Game/ObjectSpawner.cs,Assets/Scripts/Game/ShootingStar.cs
 2025-09-03 17:35 | fix | 다시하기 후 중심 전환 시 콤보가 초기화되지 않는 버그 수정 — StartOnFirstCenterToggle 옵션과 무관하게 중심 전환마다 콤보를 0으로 리셋 | Assets/Scripts/Game/GameManager.cs
 2025-09-03 17:39 | fix | 씬 재시작 시 싱글톤 인스턴스의 구독/초기화 누락 보완 — sceneLoaded에서 Player/Spawner 재바인딩 및 ToReady 재호출로 콤보/점수/상태 초기화 보장 | Assets/Scripts/Game/GameManager.cs
+
+
+2025-09-04 01:22 | feat | 블랙홀 스프라이트 및 프리팹 추가 | Assets/Prefabs/Blackhole.prefab,Assets/Sprites/\_Objects/Blackhole_Idle.aseprite,Assets/Sprites/\_Objects/Blackhole_Idle1.png
+2025-09-04 01:40 | feat | 블랙홀 프리팹에 흡입 파티클 시스템 추가 | Assets/Prefabs/Blackhole.prefab
+
 <!-- COMMIT_BOOKMARK -->
+2025-09-04 14:21 | feat | 블랙홀 스크립트/스포너 추가(단일 존재 보장, 수명 5s, 20~30s 랜덤 지연, 공전 범위 회피 스폰, 기즈모 시각화) | Assets/Scripts/Game/BlackHole.cs,Assets/Scripts/Game/BlackHoleSpawner.cs
+2025-09-04 14:28 | refactor | BlackHoleSpawner 기능 ObjectSpawner에 통합(루프/스폰 규칙/기즈모), 단일 블랙홀 수명/간격 유지 및 GameOver 연동 | Assets/Scripts/Game/ObjectSpawner.cs
+2025-09-04 14:28 | chore | 사용 중단된 BlackHoleSpawner 삭제 | Assets/Scripts/Game/BlackHoleSpawner.cs
+2025-09-04 14:38 | refactor | ObjectSpawner 코드 영역을 #region으로 구분(일반 공통/소행성/장애물/슈팅스타/블랙홀) 및 블랙홀 Gizmo 항상 On, 색상 Blue 고정(인스펙터 옵션 제거) | Assets/Scripts/Game/ObjectSpawner.cs
+2025-09-04 14:43 | fix | ObjectSpawner의 #endregion 중복으로 인한 전처리기 오류 해결(불필요한 종료 지시문 제거) | Assets/Scripts/Game/ObjectSpawner.cs
+2025-09-04 14:56 | feat | 블랙홀이 플레이어를 끌어당기는 힘 추가(세기/범위 직렬화 가능) | Assets/Scripts/Game/BlackHole.cs
+2025-09-04 15:02 | refactor | 블랙홀 흡인 방식을 물리 힘(AddForce)에서 공전 중심 이동으로 변경 | Assets/Scripts/Game/BlackHole.cs

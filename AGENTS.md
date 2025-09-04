@@ -2,7 +2,7 @@
 
 ## Agent-Specific Instructions
 
-- Make sure to proceed with reasoning and work in English and answer only the final answer in Korean.
+- Make sure to proceed with reasoning and work in English and ANSWER ONLY THE FINAL ANSWER IN KOREAN.
 - 비동기 작업 구현 시 UniTask를 활용할 것.
 - 주석 및 `Debug.Log()`, `Debug.LogError()`, `Debug.LogWarning()`의 문자열, 깃 커밋 메시지를 한글로 작성할 것.
 - `FindObjectOfType` 사용이 필요하다면 대신 `FindFirstObjectByType`(제네릭 포함) 사용으로 대체할 것.

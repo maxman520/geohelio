@@ -56,6 +56,7 @@
     <Compile Include="Assets\Scripts\Game\GameManager.cs" />
     <Compile Include="Assets\Scripts\UI\GameOverPanel.cs" />
     <Compile Include="Assets\Scripts\Game\ObjectSpawner.cs" />
+    <Compile Include="Assets\Scripts\Game\BlackHole.cs" />
     <Compile Include="Assets\Scripts\Utilities\SingletonMonoBehaviour.cs" />
     <Compile Include="Assets\Scripts\UI\MainMenuController.cs" />
     <Compile Include="Assets\Scripts\Player\SunBeamVfx.cs" />

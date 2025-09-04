@@ -1,7 +1,6 @@
 using System;
 using UnityEngine;
 using UnityEngine.SceneManagement;
-using UnityEngine.Serialization;
 
 /// <summary>
 /// 게임 진행 로직을 총괄하는 GameManager.
