@@ -115,9 +115,22 @@ public class Asteroid : MonoBehaviour
         // 태그 비교로 플레이어 판정 (콜라이더 자체 또는 루트 오브젝트)
         if (other.CompareTag(GameConstants.Tags.Player) || other.transform.root.CompareTag(GameConstants.Tags.Player))
         {
-            // 장애물인 경우 플레이어 Hurt 애니메이션 재생
+            // 장애물인 경우: 반지름/게임오버 처리 수행 + Hurt 애니메이션 재생
             if (isObstacle)
             {
+                try
+                {
+                    if (GameManager.Instance != null)
+                    {
+                        GameManager.Instance.TryHandlePlayerHit();
+                    }
+                }
+                catch (Exception e)
+                {
+                    Debug.LogWarning($"[Asteroid] 피격 처리 중 예외: {e.Message}");
+                }
+
+                // 충돌 시 항상 Hurt 애니메이션 재생(게임오버 직전에도 연출 시도)
                 var playerRoot = other.transform.root != null ? other.transform.root.gameObject : other.gameObject;
                 var playerAnimator = playerRoot.GetComponent<Animator>();
                 if (playerAnimator == null)

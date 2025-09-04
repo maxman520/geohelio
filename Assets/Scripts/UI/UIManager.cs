@@ -14,6 +14,7 @@ public class UIManager : SingletonMonoBehaviour<UIManager>
         base.Awake();
         // 주의: gameOverPanel은 인스펙터에서 UIManager 자식으로 지정하여 사용한다.
     }
+    
 
     // 게임오버 패널 표시/숨김
     public void ShowGameOver(int finalScore)
@@ -54,4 +55,5 @@ public class UIManager : SingletonMonoBehaviour<UIManager>
             Debug.LogWarning("[UIManager] GameManager 인스턴스를 찾지 못했습니다. 메인 이동 요청을 처리할 수 없습니다.");
         }
     }
+
 }

@@ -32,6 +32,8 @@ public class ShootingStar : MonoBehaviour
     [SerializeField] private Vector2 speedRange = new Vector2(4f, 7f);
     [Tooltip("플레이어 Hurt 재생 후 재충돌까지 무시 시간(초)")]
     [SerializeField] private float hitCooldown = 0.5f;
+    [Tooltip("발사 지연 시간(초): 경로 라인을 먼저 표시한 후 이 시간이 지난 뒤 이동 시작")]
+    [SerializeField] private float launchDelaySeconds = 0.5f;
 
     private ObjectSpawner _spawner;
     private Vector3 _start, _end;     // 시작/도착 지점
@@ -100,15 +102,32 @@ public class ShootingStar : MonoBehaviour
         if (v0.sqrMagnitude > 1e-8f)
             transform.right = -v0.normalized;
 
-        // 이동 시작(UniTask)
-        _moveCts = new CancellationTokenSource();
-        MoveAsync(_moveCts.Token).Forget();
-
         // 예측 라인 준비(샘플 기반 곡선 표시)
         EnsureTrajectory();
         BuildFullTrajectory();
         ApplyTrajectoryStyle();
         trajectory.enabled = true;
+
+        // 이동 시작(UniTask) — 라인 표시 후 지연을 두고 발사
+        _moveCts = new CancellationTokenSource();
+        DelayedMoveAsync(_moveCts.Token).Forget();
+    }
+
+    private async UniTaskVoid DelayedMoveAsync(CancellationToken ct)
+    {
+        float delay = Mathf.Max(0f, launchDelaySeconds);
+        if (delay > 0f)
+        {
+            try
+            {
+                await UniTask.Delay(System.TimeSpan.FromSeconds(delay), cancellationToken: ct);
+            }
+            catch
+            {
+                return; // 취소 시 종료
+            }
+        }
+        MoveAsync(ct).Forget();
     }
 
     private async UniTaskVoid MoveAsync(CancellationToken ct)
@@ -279,6 +298,19 @@ public class ShootingStar : MonoBehaviour
             if (Time.time - _lastHitTime < Mathf.Max(0f, hitCooldown)) return;
             _lastHitTime = Time.time;
 
+            try
+            {
+                if (GameManager.Instance != null)
+                {
+                    GameManager.Instance.TryHandlePlayerHit();
+                }
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogWarning($"[ShootingStar] 피격 처리 중 예외: {e.Message}");
+            }
+
+            // 충돌 시 Hurt 애니메이션 재생
             var playerRoot = other.transform.root != null ? other.transform.root.gameObject : other.gameObject;
             var playerAnimator = playerRoot.GetComponent<Animator>();
             if (playerAnimator == null)

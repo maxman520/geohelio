@@ -16,7 +16,7 @@ public class PlayerController : MonoBehaviour
 
     [Header("설정")]
     [Tooltip("지구-태양 거리(보정 포함)")]
-    [SerializeField] private float distance = 3f; // 지구-태양 거리
+    [SerializeField] private float distance = 1.5f; // 지구-태양 거리(기본값 1.5)
 
     [Tooltip("공전 속도(도/초)")]
     [SerializeField] private float orbitSpeed = 90f; // 공전 속도(도/초)

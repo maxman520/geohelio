@@ -30,8 +30,21 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
     [SerializeField] private bool autoReadyOnStart = true;
     [Tooltip("Ready 상태에서 첫 중심 전환 이벤트로 게임을 시작할지 여부")]
     [SerializeField] private bool startOnFirstCenterToggle = true;
-    [Tooltip("초기 생명 수")]
-    [SerializeField] private int initialLives = 1;
+    // 목숨 개념 제거됨 — 반지름 임계값 기반 게임오버 사용
+    
+    [Header("플레이어 반지름(거리)")]
+    [Tooltip("게임 시작 시 최소 반지름(처음 소행성 파괴 전)")]
+    [SerializeField] private float initialMinPlayerRadius = 1.5f;
+    [Tooltip("플레이어가 소행성을 한 번이라도 파괴한 후의 최소 반지름")]
+    [SerializeField] private float postFirstDestroyMinPlayerRadius = 0.8f;
+    [Tooltip("플레이어 반지름(거리) 최대값")]
+    [SerializeField] private float maxPlayerRadius = 3.0f;
+    [Tooltip("소행성 파괴 시 증가량")]
+    [SerializeField] private float playerRadiusIncreaseOnAsteroid = 0.2f;
+    [Tooltip("1초당 자연 감소량")]
+    [SerializeField] private float playerRadiusDecayPerSecond = 0.05f;
+    [Tooltip("피격 시 반지름 감소량(반지름이 최소 초과일 때만 적용)")]
+    [SerializeField] private float playerRadiusHitPenalty = 0.2f;
     [Header("게임오버 조건")]
     [Tooltip("플레이어의 현재 회전 중심이 스폰 영역(원점 중심 원)을 벗어나면 게임오버 처리")]
     [SerializeField] private bool gameOverWhenCenterOut = true;
@@ -39,22 +52,22 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
     // 진행 상태/통계
     private GameState _state = GameState.Init;
     private int _score;
-    private int _lives;
     private float _elapsedTime;
     private int _comboCount; // 동일 중심에서 연속 파괴 콤보 수(0부터 시작)
+    private bool _hasDestroyedAsteroid; // 최초 소행성 파괴 여부
+    private float _currentMinPlayerRadius; // 런타임 최소 반지름
 
     // 이벤트 훅(UI/스포너/외부에서 구독)
     public event Action<GameState> OnStateChanged;   // 상태 변경 알림
     public event Action<int> OnScoreChanged;         // 점수 변경 알림
-    public event Action<int> OnLivesChanged;         // 생명 변경 알림
     public event Action OnGameStarted;               // Playing 진입
     public event Action OnGameOver;                  // GameOver 진입
 
     // 읽기 전용 프로퍼티
     public GameState State => _state;
     public int Score => _score;
-    public int Lives => _lives;
     public float ElapsedTime => _elapsedTime;
+    public float PlayerRadius => player != null ? player.Distance : 0f;
 
     protected override void Awake()
     {
@@ -68,10 +81,11 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
         SceneManager.sceneLoaded += OnSceneLoaded;
 
         // 기본 값 초기화
-        _lives = Mathf.Max(0, initialLives);
         _score = 0;
         _elapsedTime = 0f;
         _comboCount = 0;
+        _hasDestroyedAsteroid = false;
+        _currentMinPlayerRadius = Mathf.Max(0f, initialMinPlayerRadius);
         SetState(GameState.Init);
     }
 
@@ -97,6 +111,9 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
         {
             _elapsedTime += Time.deltaTime;
             CheckCenterBoundsAndMaybeGameOver();
+
+            // 플레이어 반지름 자연 감소(초당)
+            DecayPlayerRadius(Time.deltaTime);
         }
 
         // Ready 상태에서 탭 입력 시 게임 시작(이벤트 시작 비활성 시에만)
@@ -193,7 +210,14 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
         // 플레이어 초기 배치: 중심을 지구로, 지구를 (0,0)으로 이동
         if (player == null)
             player = FindFirstObjectByType<PlayerController>();
-        player?.ResetOrbitToEarthAtOrigin();
+        // 시작 반지름(거리)를 최소값으로 설정한 뒤 배치 초기화
+        if (player != null)
+        {
+            _hasDestroyedAsteroid = false;
+            _currentMinPlayerRadius = Mathf.Max(0f, initialMinPlayerRadius);
+            player.Distance = Mathf.Clamp(_currentMinPlayerRadius, 0f, maxPlayerRadius);
+            player.ResetOrbitToEarthAtOrigin();
+        }
 
         // 스포너 초기화(초기 배치 생성 + 스폰 시작)
         if (asteroidSpawner == null)
@@ -259,37 +283,87 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
         int amount = 10 * multiplier;
         AddScore(amount);
         _comboCount++;
+        // 최소 반지름 전환: 최초 파괴 시 더 낮은 최소값 적용
+        if (!_hasDestroyedAsteroid)
+        {
+            _hasDestroyedAsteroid = true;
+            _currentMinPlayerRadius = Mathf.Max(0f, postFirstDestroyMinPlayerRadius);
+        }
+        // 소행성 파괴 보상: 플레이어 반지름 증가
+        AdjustPlayerRadius(playerRadiusIncreaseOnAsteroid);
+        EnsureGameOverIfAtOrBelowMin();
         return amount;
     }
-
-    public void LoseLife(int amount = 1)
-    {
-        if (amount <= 0) return;
-        _lives = Mathf.Max(0, _lives - amount);
-        OnLivesChanged?.Invoke(_lives);
-        if (_lives <= 0)
-        {
-            EndGame();
-        }
-    }
-
-    public void GainLife(int amount = 1)
-    {
-        if (amount <= 0) return;
-        _lives += amount;
-        OnLivesChanged?.Invoke(_lives);
-    }
+    // 목숨 로직 제거됨 — 반지름 임계 도달 시 게임오버 처리 사용
 
     // Player 제어 유틸(거리 조정/현재 중심 조회)
     public void SetPlayerDistance(float newDistance)
     {
         if (player == null) return;
-        player.Distance = Mathf.Max(0f, newDistance);
+        // 최소/최대 반지름 범위로 클램프(최소는 런타임 최소값)
+        float minR = Mathf.Max(0f, _currentMinPlayerRadius);
+        float maxR = Mathf.Max(minR, maxPlayerRadius);
+        float clamped = Mathf.Clamp(newDistance, minR, maxR);
+        player.Distance = clamped;
+        // 설정 이후 임계 확인
+        EnsureGameOverIfAtOrBelowMin();
     }
 
     public Transform GetCurrentOrbitCenter()
     {
         return player != null ? player.CurrentCenter : null;
+    }
+
+    // 반지름 증가/감소 유틸
+    private void AdjustPlayerRadius(float delta)
+    {
+        if (player == null) return;
+        SetPlayerDistance(player.Distance + delta);
+    }
+
+    private void DecayPlayerRadius(float deltaTime)
+    {
+        if (player == null) return;
+        if (playerRadiusDecayPerSecond <= 0f) return;
+        float dec = Mathf.Max(0f, playerRadiusDecayPerSecond) * Mathf.Max(0f, deltaTime);
+        if (dec <= 0f) return;
+        // 최소값 아래로 내려가지 않도록 클램프
+        float target = Mathf.Max(_currentMinPlayerRadius, player.Distance - dec);
+        SetPlayerDistance(target);
+        EnsureGameOverIfAtOrBelowMin();
+    }
+
+    /// <summary>
+    /// 플레이어 피격 처리: 반지름이 최소값보다 크면 반지름만 감소, 그렇지 않으면 게임오버.
+    /// 반환값: true면 게임오버 발생, false면 반지름만 감소.
+    /// </summary>
+    public bool TryHandlePlayerHit()
+    {
+        if (player == null) return false;
+        float r = player.Distance;
+        float min = Mathf.Max(0f, _currentMinPlayerRadius);
+        if (r > min)
+        {
+            AdjustPlayerRadius(-Mathf.Abs(playerRadiusHitPenalty));
+            EnsureGameOverIfAtOrBelowMin();
+            return false; // 반지름만 감소
+        }
+        else
+        {
+            EndGame();
+            return true; // 게임오버 발생
+        }
+    }
+
+    private void EnsureGameOverIfAtOrBelowMin()
+    {
+        if (player == null) return;
+        if (_state != GameState.Playing) return;
+        float min = Mathf.Max(0f, _currentMinPlayerRadius);
+        if (player.Distance < min)
+        {
+            EndGame();
+        }
     }
 
     // 입력: 모바일 터치 Began 또는 PC 마우스 클릭

@@ -66,6 +66,17 @@ public class BlackHole : MonoBehaviour
             float step = pullStrength * Time.deltaTime;
             centerTr.position = Vector3.MoveTowards(centerTr.position, transform.position, step);
         }
+
+        // 공전 중심이 블랙홀 트리거 내부에 들어왔는지 검사하여 게임오버 처리
+        if (collider2d != null && collider2d.OverlapPoint(centerTr.position))
+        {
+            var gm = GameManager.Instance != null ? GameManager.Instance : Object.FindFirstObjectByType<GameManager>();
+            if (gm != null)
+            {
+                Debug.Log("[BlackHole] 공전 중심이 블랙홀에 진입 — 게임오버 처리");
+                gm.EndGame();
+            }
+        }
     }
 
     private void OnTriggerEnter2D(Collider2D other)
@@ -79,16 +90,24 @@ public class BlackHole : MonoBehaviour
 
         if (!isPlayer) return;
 
-        // 게임오버 처리
-        var gm = GameManager.Instance != null ? GameManager.Instance : Object.FindFirstObjectByType<GameManager>();
-        if (gm != null)
+        // 하위 호환: 플레이어 콜라이더 진입 시에도, 실제 공전 중심이 트리거 내부일 때만 게임오버
+        Transform centerTr = _player != null ? _player.CurrentCenter : null;
+        if (collider2d != null && centerTr != null && collider2d.OverlapPoint(centerTr.position))
         {
-            Debug.Log("[BlackHole] 플레이어와 충돌 — 게임오버 처리");
-            gm.EndGame();
+            var gm = GameManager.Instance != null ? GameManager.Instance : Object.FindFirstObjectByType<GameManager>();
+            if (gm != null)
+            {
+                Debug.Log("[BlackHole] 공전 중심이 블랙홀에 진입 — 게임오버 처리");
+                gm.EndGame();
+            }
+            else
+            {
+                Debug.LogWarning("[BlackHole] GameManager를 찾지 못해 게임오버를 수행할 수 없습니다.");
+            }
         }
         else
         {
-            Debug.LogWarning("[BlackHole] GameManager를 찾지 못해 게임오버를 수행할 수 없습니다.");
+            Debug.Log("[BlackHole] 플레이어 콜라이더 진입 감지 — 공전 중심 미진입으로 무시");
         }
     }
 }
