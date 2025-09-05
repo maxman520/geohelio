@@ -142,7 +142,6 @@
 2025-09-05 17:29 | docs | 더블 스코어 모드 구현 계획 문서 추가 | DOUBLE_SCORE_MODE_PLAN.md
 2025-09-05 17:02 | fix | UI 버튼 클릭을 입력에서 제외하도록 Player 탭 판정 개선 | Assets/Scripts/Player/PlayerController.cs
 
-<!-- COMMIT_BOOKMARK -->
 2025-09-05 20:05 | fix | GameOverPanel 점수 표기를 천 단위 콤마 형식으로 변경 | Assets/Scripts/UI/GameOverPanel.cs
 2025-09-05 23:31 | fix | 소프트 리스타트 시 Ready 상태 유지(즉시 시작 방지) | Assets/Scripts/Game/GameManager.cs
 2025-09-05 23:31 | feat | 상단 좌측 버튼 컨트롤러 추가(오디오/진동 토글 비워둠, 재시작 구현 및 Playing에서만 활성) | Assets/Scripts/UI/TopLeftButtons.cs
@@ -150,3 +149,11 @@
 2025-09-05 23:33 | chore | TopLeftButtons 재시작 호출 API를 RestartToReadyAsync로 변경 | Assets/Scripts/UI/TopLeftButtons.cs
 2025-09-05 23:41 | chore | Assets/Audio 폴더 메타 제외 전부 .gitignore 추가 | .gitignore
 2025-09-06 00:22 | docs | AudioManager 구현 계획 문서 추가 | AUDIO_MANAGER_PLAN.md
+
+<!-- COMMIT_BOOKMARK -->
+
+2025-09-06 00:32 | feat | AudioManager 기본 구현 및 오디오 토글 연동 | Assets/Scripts/Utilities/AudioManager.cs,Assets/Scripts/UI/TopLeftButtons.cs
+2025-09-06 00:42 | feat | 오디오 토글 버튼 아이콘 상태 동기화(음소거 이벤트 구독) | Assets/Scripts/Utilities/AudioManager.cs,Assets/Scripts/UI/TopLeftButtons.cs
+2025-09-06 00:49 | fix | Main/Game 씬 진입 시 기본 BGM 자동 재생 옵션 추가 | Assets/Scripts/Utilities/AudioManager.cs
+2025-09-06 01:03 | feat | SFX 카탈로그/열거형 도입 및 PlaySfx(SfxId) 추가 | Assets/Scripts/Utilities/SfxId.cs,Assets/Scripts/Utilities/SfxCatalog.cs,Assets/Scripts/Utilities/AudioManager.cs
+2025-09-06 01:26 | refactor | SFX를 문자열 키 기반으로 전환 및 PlaySfx(string) 도입 | Assets/Scripts/Utilities/SfxCatalog.cs,Assets/Scripts/Utilities/AudioManager.cs

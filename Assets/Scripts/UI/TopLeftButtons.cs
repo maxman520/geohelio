@@ -15,6 +15,14 @@ public class TopLeftButtons : MonoBehaviour
     [SerializeField] private Button vibrationToggleButton; // 스마트폰 진동 토글 버튼
     [SerializeField] private Button restartButton;         // 재시작 버튼
 
+    [Header("오디오 아이콘")]
+    [Tooltip("오디오 토글 버튼의 아이콘 이미지(비워두면 버튼의 Image 사용)")]
+    [SerializeField] private Image audioIcon;
+    [Tooltip("음소거 해제(사운드 ON) 상태의 아이콘 스프라이트")]
+    [SerializeField] private Sprite audioOnSprite;
+    [Tooltip("음소거(사운드 OFF) 상태의 아이콘 스프라이트")]
+    [SerializeField] private Sprite audioOffSprite;
+
     private GameManager _gm;
 
     private void Awake()
@@ -42,6 +50,19 @@ public class TopLeftButtons : MonoBehaviour
             Debug.LogWarning("[TopLeftButtons] GameManager를 찾지 못했습니다. 재시작 버튼 상태 제어가 비활성화됩니다.");
             SetRestartInteractable(false);
         }
+
+        // AudioManager 구독 및 아이콘 초기 반영
+        var am = AudioManager.Instance != null ? AudioManager.Instance : FindFirstObjectByType<AudioManager>();
+        if (am != null)
+        {
+            am.OnMuteChanged -= HandleMuteChanged; // 중복 방지
+            am.OnMuteChanged += HandleMuteChanged;
+            HandleMuteChanged(am.IsMuted);
+        }
+        else
+        {
+            Debug.LogWarning("[TopLeftButtons] AudioManager를 찾지 못했습니다. 오디오 아이콘 초기화가 제한됩니다.");
+        }
     }
 
     private void OnDisable()
@@ -49,6 +70,12 @@ public class TopLeftButtons : MonoBehaviour
         if (_gm != null)
         {
             _gm.OnStateChanged -= HandleStateChanged;
+        }
+
+        var am = AudioManager.Instance != null ? AudioManager.Instance : FindFirstObjectByType<AudioManager>();
+        if (am != null)
+        {
+            am.OnMuteChanged -= HandleMuteChanged;
         }
     }
 
@@ -71,8 +98,44 @@ public class TopLeftButtons : MonoBehaviour
     // 오디오 토글: 구현 비움
     private void OnClickAudioToggle()
     {
-        // TODO: 오디오 설정 토글 로직은 추후 구현
-        // Debug.Log("오디오 토글 클릭");
+        // 오디오 매니저 싱글턴을 통해 전역 음소거 토글
+        var am = AudioManager.Instance != null ? AudioManager.Instance : FindFirstObjectByType<AudioManager>();
+        if (am != null)
+        {
+            am.ToggleMasterMute();
+        }
+        else
+        {
+            Debug.LogWarning("[TopLeftButtons] AudioManager 인스턴스를 찾지 못했습니다. 오디오 토글을 수행할 수 없습니다.");
+        }
+    }
+
+    // 음소거 상태 변경 시 아이콘 갱신
+    private void HandleMuteChanged(bool muted)
+    {
+        RefreshAudioIcon(muted);
+    }
+
+    private void RefreshAudioIcon(bool muted)
+    {
+        // 아이콘 참조가 없으면 버튼의 Image로 대체
+        if (audioIcon == null && audioToggleButton != null)
+        {
+            audioIcon = audioToggleButton.image;
+        }
+        if (audioIcon == null) return;
+
+        // 스프라이트가 모두 설정된 경우 스프라이트 전환, 아니면 색상으로 대체 표현
+        if (audioOnSprite != null && audioOffSprite != null)
+        {
+            audioIcon.sprite = muted ? audioOffSprite : audioOnSprite;
+        }
+        else
+        {
+            var c = audioIcon.color;
+            c.a = muted ? 0.5f : 1f; // 음소거 시 반투명 처리
+            audioIcon.color = c;
+        }
     }
 
     // 진동 토글: 구현 비움

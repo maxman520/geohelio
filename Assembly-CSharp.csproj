@@ -65,10 +65,12 @@
     <Compile Include="Assets\Scripts\Player\SunBeamVfx.cs" />
     <Compile Include="Assets\Scripts\UI\SafeArea.cs" />
     <Compile Include="Assets\Scripts\UI\ScoreFloatingText.cs" />
+    <Compile Include="Assets\Scripts\Utilities\SfxCatalog.cs" />
     <Compile Include="Assets\Scripts\Player\PlayerController.cs" />
     <Compile Include="Assets\Scripts\UI\ScorePanel.cs" />
     <Compile Include="Assets\Scripts\Game\ShootingStar.cs" />
     <Compile Include="Assets\Scripts\Game\GameOverBoundaryVisualizer.cs" />
+    <Compile Include="Assets\Scripts\Utilities\AudioManager.cs" />
     <Compile Include="Assets\Scripts\UI\UIManager.cs" />
   </ItemGroup>
   <ItemGroup>
