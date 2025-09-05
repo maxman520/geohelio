@@ -334,13 +334,10 @@ MonoBehaviour:
   trajectory: {fileID: 359413117401666917}
   trajectoryColor: {r: 1, g: 1, b: 1, a: 1}
   lineWidthWorld: 0.25
-  trajectorySamples: 32
   dashWorldSize: 0.3
-  trajectorySortingLayer: 
-  trajectorySortingOrder: -1
-  trajectoryMaterial: {fileID: 0}
   speedRange: {x: 4, y: 7}
   hitCooldown: 0.5
+  launchDelaySeconds: 1
 --- !u!1 &7983039202033718866
 GameObject:
   m_ObjectHideFlags: 0

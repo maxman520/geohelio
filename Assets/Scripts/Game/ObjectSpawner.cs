@@ -1055,9 +1055,7 @@ public class ObjectSpawner : MonoBehaviour
         // 카메라 기반 반경 계산 (런타임과 동일한 로직에 최대한 맞춤)
         float radius = GetGizmoSpawnRadius();
 
-        // 외곽 생성 가능 반경(원점 기준)
-        Gizmos.color = new Color(0f, 1f, 0f, 0.9f); // 초록색: 생성 가능 범위 외곽
-        Gizmos.DrawWireSphere(Vector3.zero, radius);
+        // (제거됨) 외곽 생성 가능 반경 Gizmo — 런타임 시각화로 대체
 
         // 월드 원점 마커(작은 점)
         Gizmos.color = new Color(0.2f, 0.8f, 1f, 0.9f); // 하늘색: 월드 원점

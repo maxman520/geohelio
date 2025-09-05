@@ -116,7 +116,6 @@
 2025-09-04 15:59 | fix | 소행성 이동을 GameManager가 Playing 상태일 때만 수행하도록 제한 | Assets/Scripts/Game/Asteroid.cs
 2025-09-04 16:11 | feat | 플레이어 공전 원 내부 금지 규칙에 orbitGap(지구/태양 크기 고려) 반영 및 직렬화 필드 추가 | Assets/Scripts/Game/ObjectSpawner.cs
 
-<!-- COMMIT_BOOKMARK -->
 2025-09-05 01:19 | fix | 장애물 소행성/슈팅스타와 플레이어 충돌 시 라이프 1 감소 처리 추가 | Assets/Scripts/Game/Asteroid.cs,Assets/Scripts/Game/ShootingStar.cs
 2025-09-05 01:21 | feat | 플레이어 반지름 기본/최대값(1.5/3.0) 및 자연 감소(초당 0.05), 소행성 파괴 시 +0.2 증가 로직 추가 | Assets/Scripts/Game/GameManager.cs,Assets/Scripts/Player/PlayerController.cs
 2025-09-05 01:30 | fix | 피격 처리 변경: 반지름이 1.5 초과 시 라이프/허트 미적용, 반지름만 감소(0.2); 1.5 이하에서만 라이프 감소 | Assets/Scripts/Game/GameManager.cs,Assets/Scripts/Game/Asteroid.cs,Assets/Scripts/Game/ShootingStar.cs
@@ -128,3 +127,10 @@
 2025-09-05 01:56 | fix | 장애물 소행성/슈팅스타 충돌 시 Hurt 애니메이션 재생 추가 | Assets/Scripts/Game/Asteroid.cs,Assets/Scripts/Game/ShootingStar.cs
 2025-09-05 01:56 | feat | 슈팅스타 발사 지연 추가(라인 먼저 표시 후 인스펙터 설정 시간 경과 뒤 발사) | Assets/Scripts/Game/ShootingStar.cs
 2025-09-05 01:19 | fix | 장애물 소행성/슈팅스타와 플레이어 충돌 시 라이프 1 감소 처리 추가 | Assets/Scripts/Game/Asteroid.cs,Assets/Scripts/Game/ShootingStar.cs
+
+<!-- COMMIT_BOOKMARK -->
+2025-09-05 12:27 | feat | 플레이어 이동 가능 범위 LineRenderer 시각화 컴포넌트 추가 | Assets/Scripts/Player/MovementRangeVisualizer.cs
+2025-09-05 12:31 | feat | 게임오버 경계(스폰 반경) LineRenderer 시각화 추가 | Assets/Scripts/Game/GameOverBoundaryVisualizer.cs
+2025-09-05 12:35 | refactor | 스폰 반경 Gizmo 제거(런타임 LineRenderer로 대체) | Assets/Scripts/Game/ObjectSpawner.cs
+2025-09-05 12:43 | feat | GameOverBoundaryVisualizer 에디터 표시 지원([ExecuteAlways], OnValidate) | Assets/Scripts/Game/GameOverBoundaryVisualizer.cs
+2025-09-05 12:44 | fix | 에디터/런타임 반경 불일치 수정(에디터는 카메라 기반 계산) | Assets/Scripts/Game/GameOverBoundaryVisualizer.cs
