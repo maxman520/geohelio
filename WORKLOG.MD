@@ -133,7 +133,7 @@
 2025-09-05 12:43 | feat | GameOverBoundaryVisualizer 에디터 표시 지원([ExecuteAlways], OnValidate) | Assets/Scripts/Game/GameOverBoundaryVisualizer.cs
 2025-09-05 12:44 | fix | 에디터/런타임 반경 불일치 수정(에디터는 카메라 기반 계산) | Assets/Scripts/Game/GameOverBoundaryVisualizer.cs
 
-<!-- COMMIT_BOOKMARK -->
+2025-09-05 15:38 | fix | GameOverPanel Awake에서 즉시 Hide 제거로 최초 활성화 시 패널 비표시 버그 수정 | Assets/Scripts/UI/GameOverPanel.cs
 2025-09-05 19:33 | feat | 더블 스코어 모드 컨트롤러/패널 스크립트 추가 | Assets/Scripts/Game/DoubleScoreModeController.cs,Assets/Scripts/UI/DoubleScorePanel.cs
 2025-09-05 19:33 | feat | Player 오빗 속도 오버라이드 API 추가 | Assets/Scripts/Player/PlayerController.cs
 2025-09-05 19:33 | refactor | GameManager에 더블 스코어/감쇠 억제/거리 고정 통합 | Assets/Scripts/Game/GameManager.cs
@@ -141,4 +141,12 @@
 2025-09-05 17:38 | docs | 계획 문서 내 DoubleScoreUI 명칭을 DoubleScorePanel로 정정 | DOUBLE_SCORE_MODE_PLAN.md
 2025-09-05 17:29 | docs | 더블 스코어 모드 구현 계획 문서 추가 | DOUBLE_SCORE_MODE_PLAN.md
 2025-09-05 17:02 | fix | UI 버튼 클릭을 입력에서 제외하도록 Player 탭 판정 개선 | Assets/Scripts/Player/PlayerController.cs
-2025-09-05 15:38 | fix | GameOverPanel Awake에서 즉시 Hide 제거로 최초 활성화 시 패널 비표시 버그 수정 | Assets/Scripts/UI/GameOverPanel.cs
+
+<!-- COMMIT_BOOKMARK -->
+2025-09-05 20:05 | fix | GameOverPanel 점수 표기를 천 단위 콤마 형식으로 변경 | Assets/Scripts/UI/GameOverPanel.cs
+2025-09-05 23:31 | fix | 소프트 리스타트 시 Ready 상태 유지(즉시 시작 방지) | Assets/Scripts/Game/GameManager.cs
+2025-09-05 23:31 | feat | 상단 좌측 버튼 컨트롤러 추가(오디오/진동 토글 비워둠, 재시작 구현 및 Playing에서만 활성) | Assets/Scripts/UI/TopLeftButtons.cs
+2025-09-05 23:33 | refactor | SoftRestart 동작 복원 및 Ready 전용 API 추가(RestartToReadyAsync) | Assets/Scripts/Game/GameManager.cs
+2025-09-05 23:33 | chore | TopLeftButtons 재시작 호출 API를 RestartToReadyAsync로 변경 | Assets/Scripts/UI/TopLeftButtons.cs
+2025-09-05 23:41 | chore | Assets/Audio 폴더 메타 제외 전부 .gitignore 추가 | .gitignore
+2025-09-06 00:22 | docs | AudioManager 구현 계획 문서 추가 | AUDIO_MANAGER_PLAN.md

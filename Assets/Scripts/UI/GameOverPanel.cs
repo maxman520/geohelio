@@ -1,3 +1,4 @@
+using System.Globalization;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -24,7 +25,12 @@ public class GameOverPanel : MonoBehaviour
     public void Show(int finalScore)
     {
         if (root != null) root.SetActive(true);
-        if (scoreText != null) scoreText.text = $"{finalScore}";
+        if (scoreText != null)
+        {
+            // 최종 점수는 천 단위 구분 기호가 붙도록 표시(예: 1,024)
+            string formatted = finalScore.ToString("N0");
+            scoreText.text = formatted;
+        }
     }
 
     // 패널 숨김

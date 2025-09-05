@@ -439,6 +439,18 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
         }
     }
 
+    /// <summary>
+    /// Ready 상태로만 되돌리는 리스타트(즉시 시작하지 않음).
+    /// - 상단 좌측 "재시작" 버튼 등, "게임 시작 전" 상태로 복귀가 필요한 경우 사용.
+    /// </summary>
+    public async UniTask RestartToReadyAsync()
+    {
+        UIManager.Instance?.HideGameOver();
+        if (Time.timeScale != 1f) Time.timeScale = 1f;
+        ToReady();
+        await UniTask.Yield(PlayerLoopTiming.Update);
+    }
+
     // 회전 중심이 스폰 영역을 벗어났는지 확인하여 필요 시 게임오버 처리
     private void CheckCenterBoundsAndMaybeGameOver()
     {

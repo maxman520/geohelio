@@ -21,3 +21,8 @@
 
 # 문서(로컬 계획서) 무시
 REFACTORING_PLAN.MD
+
+# Ignore all files under Assets/Audio except .meta files
+/Assets/Audio/**
+!/Assets/Audio/**/*.meta
+!/Assets/Audio/*.meta

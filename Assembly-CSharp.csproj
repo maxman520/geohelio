@@ -51,6 +51,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Assets\Scripts\UI\DoubleScorePanel.cs" />
+    <Compile Include="Assets\Scripts\UI\TopLeftButtons.cs" />
     <Compile Include="Assets\Scripts\Utilities\GameConstants.cs" />
     <Compile Include="Assets\Scripts\Game\Asteroid.cs" />
     <Compile Include="Assets\Scripts\Utilities\PooledObjectTag.cs" />
