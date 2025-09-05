@@ -57,6 +57,12 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
     private bool _hasDestroyedAsteroid; // 최초 소행성 파괴 여부
     private float _currentMinPlayerRadius; // 런타임 최소 반지름
 
+    // 더블 스코어/거리 제어
+    private bool _doubleScoreActive;         // 더블 스코어 모드 여부
+    private bool _suppressRadiusDecay;       // 거리 자연 감소 일시 중지
+    private bool _lockPlayerDistance;        // 거리 고정 여부
+    private float _lockedDistanceValue = 3f; // 고정 거리 값
+
     // 이벤트 훅(UI/스포너/외부에서 구독)
     public event Action<GameState> OnStateChanged;   // 상태 변경 알림
     public event Action<int> OnScoreChanged;         // 점수 변경 알림
@@ -262,7 +268,10 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
         asteroidSpawner?.Stop();
 
         // 결과 표시(UI Manager 연동)
-        UIManager.Instance?.ShowGameOver(_score);
+        if (UIManager.Instance != null)
+            UIManager.Instance?.ShowGameOver(_score);
+        else
+            Debug.Log("[GameManager] UI매니저가 Null");
     }
 
     // 점수/생명 관리
@@ -279,8 +288,9 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
     /// </summary>
     public int AwardAsteroidScore()
     {
-        int multiplier = _comboCount + 1; // 최초 1배(10점)부터 시작
-        int amount = 10 * multiplier;
+        // 기본 증가폭은 10, 더블 스코어 모드 중에는 20
+        int inc = _doubleScoreActive ? 20 : 10;
+        int amount = 10 + inc * _comboCount; // 10, 30, 50, ... (inc=20)
         AddScore(amount);
         _comboCount++;
         // 최소 반지름 전환: 최초 파괴 시 더 낮은 최소값 적용
@@ -300,6 +310,12 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
     public void SetPlayerDistance(float newDistance)
     {
         if (player == null) return;
+        if (_lockPlayerDistance)
+        {
+            // 거리 고정 상태에서는 고정값을 유지
+            player.Distance = _lockedDistanceValue;
+            return;
+        }
         // 최소/최대 반지름 범위로 클램프(최소는 런타임 최소값)
         float minR = Mathf.Max(0f, _currentMinPlayerRadius);
         float maxR = Mathf.Max(minR, maxPlayerRadius);
@@ -318,12 +334,14 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
     private void AdjustPlayerRadius(float delta)
     {
         if (player == null) return;
+        if (_lockPlayerDistance) return; // 고정 중에는 반경 변경 무시
         SetPlayerDistance(player.Distance + delta);
     }
 
     private void DecayPlayerRadius(float deltaTime)
     {
         if (player == null) return;
+        if (_suppressRadiusDecay) return; // 감쇠 일시 중지
         if (playerRadiusDecayPerSecond <= 0f) return;
         float dec = Mathf.Max(0f, playerRadiusDecayPerSecond) * Mathf.Max(0f, deltaTime);
         if (dec <= 0f) return;
@@ -455,5 +473,33 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
             Debug.Log("[GameManager] 회전 중심이 스폰 영역을 벗어났습니다. 게임오버 처리");
             EndGame();
         }
+    }
+
+    // ===== 더블 스코어/거리 감쇠/거리 고정 제어 API =====
+    public void SetDoubleScoreActive(bool value)
+    {
+        _doubleScoreActive = value;
+    }
+
+    public bool IsDoubleScoreActive => _doubleScoreActive;
+
+    public void SetRadiusDecaySuppressed(bool value)
+    {
+        _suppressRadiusDecay = value;
+    }
+
+    public void LockPlayerDistance(float distance)
+    {
+        _lockedDistanceValue = Mathf.Max(0f, distance);
+        _lockPlayerDistance = true;
+        if (player != null)
+        {
+            player.Distance = _lockedDistanceValue;
+        }
+    }
+
+    public void UnlockPlayerDistance()
+    {
+        _lockPlayerDistance = false;
     }
 }

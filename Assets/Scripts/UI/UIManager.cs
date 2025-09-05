@@ -12,14 +12,18 @@ public class UIManager : SingletonMonoBehaviour<UIManager>
     protected override void Awake()
     {
         base.Awake();
-        // 주의: gameOverPanel은 인스펙터에서 UIManager 자식으로 지정하여 사용한다.
     }
     
 
     // 게임오버 패널 표시/숨김
     public void ShowGameOver(int finalScore)
     {
-        gameOverPanel?.Show(finalScore);
+        if (gameOverPanel == null)
+        {
+            Debug.LogWarning("[UIManager] GameOverPanel 참조가 없어 표시할 수 없습니다. 씬 배치/참조를 확인해 주세요.");
+            return;
+        }
+        gameOverPanel.Show(finalScore);
     }
 
     public void HideGameOver()

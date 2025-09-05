@@ -50,6 +50,7 @@
     <Analyzer Include="C:\Users\JJunu\GeoHelio\Library\PackageCache\com.unity.dt.app-ui@7b87c8225c06\Runtime\SourceGenerators\netstandard2.0\EnumToLowerCase.dll" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Assets\Scripts\UI\DoubleScorePanel.cs" />
     <Compile Include="Assets\Scripts\Utilities\GameConstants.cs" />
     <Compile Include="Assets\Scripts\Game\Asteroid.cs" />
     <Compile Include="Assets\Scripts\Utilities\PooledObjectTag.cs" />
@@ -59,6 +60,7 @@
     <Compile Include="Assets\Scripts\Game\BlackHole.cs" />
     <Compile Include="Assets\Scripts\Utilities\SingletonMonoBehaviour.cs" />
     <Compile Include="Assets\Scripts\UI\MainMenuController.cs" />
+    <Compile Include="Assets\Scripts\Game\DoubleScoreModeController.cs" />
     <Compile Include="Assets\Scripts\Player\SunBeamVfx.cs" />
     <Compile Include="Assets\Scripts\UI\SafeArea.cs" />
     <Compile Include="Assets\Scripts\UI\ScoreFloatingText.cs" />

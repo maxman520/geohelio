@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using UnityEngine.EventSystems;
 
 /// <summary>
 /// 플레이어 컨트롤러: 초기 상태에서 지구·태양 거리를 유지하며
@@ -20,6 +21,8 @@ public class PlayerController : MonoBehaviour
 
     [Tooltip("공전 속도(도/초)")]
     [SerializeField] private float orbitSpeed = 90f; // 공전 속도(도/초)
+    private bool _orbitSpeedOverridden;
+    private float _orbitSpeedOverrideValue;
 
     [Tooltip("공전 축(기본: Z축, 2D 평면)")]
     [SerializeField] private Vector3 orbitAxis = Vector3.forward; // 공전 축
@@ -132,7 +135,8 @@ public class PlayerController : MonoBehaviour
         // 공전 처리: 현재 중심을 기준으로 반대편 천체 이동
         if (earth == null || sun == null) return;
 
-        float angle = orbitSpeed * Time.deltaTime;
+        float currentSpeed = _orbitSpeedOverridden ? _orbitSpeedOverrideValue : orbitSpeed;
+        float angle = currentSpeed * Time.deltaTime;
 
         if (_center == OrbitCenter.Earth)
         {
@@ -188,16 +192,36 @@ public class PlayerController : MonoBehaviour
 
     private bool IsTap()
     {
-        // 모바일 터치 Began 또는 PC 마우스 클릭으로 판정
+        // 모바일 터치 Began 중 UI 위를 제외하고만 판정
         if (Input.touchCount > 0)
         {
             for (int i = 0; i < Input.touchCount; i++)
             {
-                if (Input.GetTouch(i).phase == TouchPhase.Began)
-                    return true;
+                var touch = Input.GetTouch(i);
+                if (touch.phase != TouchPhase.Began) continue;
+
+                // UI 위 터치라면 무시(버튼 등)
+                if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject(touch.fingerId))
+                {
+                    // Debug.Log("[PlayerController] UI 위 터치 입력 무시");
+                    continue;
+                }
+                return true;
             }
         }
-        return Input.GetMouseButtonDown(0);
+
+        // PC 마우스: UI 위 클릭은 무시
+        if (Input.GetMouseButtonDown(0))
+        {
+            if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())
+            {
+                // Debug.Log("[PlayerController] UI 위 마우스 클릭 무시");
+                return false;
+            }
+            return true;
+        }
+
+        return false;
     }
 
     private void ToggleCenter()
@@ -343,5 +367,17 @@ public class PlayerController : MonoBehaviour
             Vector3 p1 = centerPos + rot * (_orbitUnitCirclePoints[i + 1] * r);
             Gizmos.DrawLine(p0, p1);
         }
+    }
+
+    // 더블 스코어 등 모드에서 오빗 속도 오버라이드 지원
+    public void OverrideOrbitSpeed(float value)
+    {
+        _orbitSpeedOverridden = true;
+        _orbitSpeedOverrideValue = Mathf.Max(0f, value);
+    }
+
+    public void ClearOrbitSpeedOverride()
+    {
+        _orbitSpeedOverridden = false;
     }
 }

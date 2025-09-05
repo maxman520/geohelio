@@ -94,7 +94,6 @@
 2025-09-03 17:35 | fix | 다시하기 후 중심 전환 시 콤보가 초기화되지 않는 버그 수정 — StartOnFirstCenterToggle 옵션과 무관하게 중심 전환마다 콤보를 0으로 리셋 | Assets/Scripts/Game/GameManager.cs
 2025-09-03 17:39 | fix | 씬 재시작 시 싱글톤 인스턴스의 구독/초기화 누락 보완 — sceneLoaded에서 Player/Spawner 재바인딩 및 ToReady 재호출로 콤보/점수/상태 초기화 보장 | Assets/Scripts/Game/GameManager.cs
 
-
 2025-09-04 01:22 | feat | 블랙홀 스프라이트 및 프리팹 추가 | Assets/Prefabs/Blackhole.prefab,Assets/Sprites/\_Objects/Blackhole_Idle.aseprite,Assets/Sprites/\_Objects/Blackhole_Idle1.png
 2025-09-04 01:40 | feat | 블랙홀 프리팹에 흡입 파티클 시스템 추가 | Assets/Prefabs/Blackhole.prefab
 
@@ -128,9 +127,18 @@
 2025-09-05 01:56 | feat | 슈팅스타 발사 지연 추가(라인 먼저 표시 후 인스펙터 설정 시간 경과 뒤 발사) | Assets/Scripts/Game/ShootingStar.cs
 2025-09-05 01:19 | fix | 장애물 소행성/슈팅스타와 플레이어 충돌 시 라이프 1 감소 처리 추가 | Assets/Scripts/Game/Asteroid.cs,Assets/Scripts/Game/ShootingStar.cs
 
-<!-- COMMIT_BOOKMARK -->
 2025-09-05 12:27 | feat | 플레이어 이동 가능 범위 LineRenderer 시각화 컴포넌트 추가 | Assets/Scripts/Player/MovementRangeVisualizer.cs
 2025-09-05 12:31 | feat | 게임오버 경계(스폰 반경) LineRenderer 시각화 추가 | Assets/Scripts/Game/GameOverBoundaryVisualizer.cs
 2025-09-05 12:35 | refactor | 스폰 반경 Gizmo 제거(런타임 LineRenderer로 대체) | Assets/Scripts/Game/ObjectSpawner.cs
 2025-09-05 12:43 | feat | GameOverBoundaryVisualizer 에디터 표시 지원([ExecuteAlways], OnValidate) | Assets/Scripts/Game/GameOverBoundaryVisualizer.cs
 2025-09-05 12:44 | fix | 에디터/런타임 반경 불일치 수정(에디터는 카메라 기반 계산) | Assets/Scripts/Game/GameOverBoundaryVisualizer.cs
+
+<!-- COMMIT_BOOKMARK -->
+2025-09-05 19:33 | feat | 더블 스코어 모드 컨트롤러/패널 스크립트 추가 | Assets/Scripts/Game/DoubleScoreModeController.cs,Assets/Scripts/UI/DoubleScorePanel.cs
+2025-09-05 19:33 | feat | Player 오빗 속도 오버라이드 API 추가 | Assets/Scripts/Player/PlayerController.cs
+2025-09-05 19:33 | refactor | GameManager에 더블 스코어/감쇠 억제/거리 고정 통합 | Assets/Scripts/Game/GameManager.cs
+2025-09-05 18:52 | docs | 더블 스코어 모드 계획에서 Stardust 관련 내용 전면 제거 | DOUBLE_SCORE_MODE_PLAN.md
+2025-09-05 17:38 | docs | 계획 문서 내 DoubleScoreUI 명칭을 DoubleScorePanel로 정정 | DOUBLE_SCORE_MODE_PLAN.md
+2025-09-05 17:29 | docs | 더블 스코어 모드 구현 계획 문서 추가 | DOUBLE_SCORE_MODE_PLAN.md
+2025-09-05 17:02 | fix | UI 버튼 클릭을 입력에서 제외하도록 Player 탭 판정 개선 | Assets/Scripts/Player/PlayerController.cs
+2025-09-05 15:38 | fix | GameOverPanel Awake에서 즉시 Hide 제거로 최초 활성화 시 패널 비표시 버그 수정 | Assets/Scripts/UI/GameOverPanel.cs

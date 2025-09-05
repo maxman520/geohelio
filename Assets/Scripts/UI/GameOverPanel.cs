@@ -12,11 +12,12 @@ public class GameOverPanel : MonoBehaviour
 
     private void Awake()
     {
+        // 루트 미할당 시 자신을 루트로 사용하여 활성/비활성을 안정적으로 제어
+        if (root == null) root = gameObject;
         if (retryButton != null)
         {
             retryButton.onClick.AddListener(OnClickRetry);
         }
-        Hide();
     }
 
     // 점수와 함께 패널 표시
