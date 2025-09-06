@@ -45,6 +45,7 @@ public class ShootingStar : MonoBehaviour
     private float _lastHitTime = -999f;
     private Vector3[] _trajPoints;  // 라인 포인트(샘플)
     private float _trajTotalLength; // 전체 길이
+    private bool _hasHitPlayer;     // 동일 개체로는 플레이어를 한 번만 피격 처리
 
     public void Initialize(ObjectSpawner spawner)
     {
@@ -64,6 +65,8 @@ public class ShootingStar : MonoBehaviour
         _moveCts?.Cancel();
         _moveCts?.Dispose();
         _moveCts = null;
+        // 최초 활성화 시 중복 피격 상태를 리셋한다.
+        _hasHitPlayer = false; // 한 슈팅스타당 1회만 피격 허용
         if (col != null) col.enabled = true;
         if (trajectory != null)
         {
@@ -295,8 +298,12 @@ public class ShootingStar : MonoBehaviour
         // 플레이어와 충돌 시 Hurt 애니메이션 재생(연타 방지)
         if (other.CompareTag(GameConstants.Tags.Player) || other.transform.root.CompareTag(GameConstants.Tags.Player))
         {
+            // 동일 슈팅스타 개체로는 1회만 피격 처리한다.
+            if (_hasHitPlayer) return;
+            // 추가 안전장치: 짧은 쿨다운도 유지(물리 중복 Enter 방지)
             if (Time.time - _lastHitTime < Mathf.Max(0f, hitCooldown)) return;
             _lastHitTime = Time.time;
+            _hasHitPlayer = true;
 
             try
             {
@@ -319,6 +326,9 @@ public class ShootingStar : MonoBehaviour
             {
                 playerAnimator.Play(GameConstants.Anim.PlayerHurtState, 0, 0f);
             }
+
+            // 동일 개체로 재충돌하지 않도록 즉시 콜라이더를 비활성화한다.
+            if (col != null) col.enabled = false; // "한 번만 아프게" 처리
         }
     }
 }

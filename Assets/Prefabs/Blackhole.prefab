@@ -192,10 +192,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 80b56e4bf587ae84e97db6550da8f76b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BlackHole
-  collider2d: {fileID: 232184888302122317}
-  rb2d: {fileID: 7018865556763379931}
-  pullStrength: 1
-  pullRange: 0
+  fadeInOnSpawn: 1
+  fadeInDuration: 0.25
+  spriteRenderers: []
 --- !u!1 &6289656665065651336
 GameObject:
   m_ObjectHideFlags: 0

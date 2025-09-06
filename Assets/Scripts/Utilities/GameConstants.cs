@@ -18,6 +18,10 @@ public static class GameConstants
         public const string ExplodeTrigger = "explode";
         public const string ExplodeStateTag = "Explode";
         public const string PlayerHurtState = "Hurt";
+        
+        // 블랙홀 디스폰 연출용 트리거/태그
+        public const string BlackHoleDespawnTrigger = "despawn"; // 블랙홀 디스폰 트리거 이름(애니메이터와 동일하게 유지)
+        public const string BlackHoleDespawnStateTag = "Despawn"; // 애니메이터 상태 태그(옵션)
     }
 
     public static class Scenes

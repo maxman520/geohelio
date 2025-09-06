@@ -85,6 +85,8 @@ public class ObjectSpawner : MonoBehaviour
     private readonly List<Transform> _spawned = new List<Transform>(); // 관리 중인 소행성 목록
     private readonly List<Transform> _spawnedObstacles = new List<Transform>(); // 장애물 소행성 목록
     private readonly List<Transform> _spawnedShootingStars = new List<Transform>(); // 슈팅스타 목록
+    private float _baseSpawnInterval; // 동적 조정을 위한 기준 스폰 간격(초)
+    private bool _spawnIntervalHalved; // 현재 스폰 간격이 절반 모드인지 여부
     // 유니티 내장 풀 딕셔너리: key = 프리팹 이름, value = ObjectPool
     private readonly Dictionary<string, ObjectPool<GameObject>> _pools = new Dictionary<string, ObjectPool<GameObject>>();
     private PlayerController _player;
@@ -119,6 +121,10 @@ public class ObjectSpawner : MonoBehaviour
         {
             _player.OnCenterToggled += OnPlayerCenterToggled;
         }
+
+        // 스폰 간격 기준값 저장(런타임 시작 시점의 인스펙터 값을 기준으로 사용)
+        _baseSpawnInterval = Mathf.Max(0.0001f, spawnInterval);
+        _spawnIntervalHalved = false;
     }
 
 #if UNITY_EDITOR
@@ -206,6 +212,8 @@ public class ObjectSpawner : MonoBehaviour
     private void Update()
     {
         if (!_running) return;
+        // 현재 일반 소행성 수에 따라 스폰 간격을 동적으로 조정한다.
+        AdjustSpawnIntervalByAliveCount();
         _timer += Time.deltaTime;
         if (_timer >= spawnInterval)
         {
@@ -222,6 +230,32 @@ public class ObjectSpawner : MonoBehaviour
         }
 
         UpdateShootingStarSchedule();
+    }
+
+    // 일반 소행성 수가 initialCount보다 적으면 스폰 간격을 절반으로, 아니면 원래 값으로 복구한다.
+    private void AdjustSpawnIntervalByAliveCount()
+    {
+        // 최신 상태를 반영하기 위해 null 항목 정리 후 개수 계산
+        CleanupList();
+        int alive = _spawned.Count;
+        if (alive < Mathf.Max(0, initialCount))
+        {
+            if (!_spawnIntervalHalved)
+            {
+                spawnInterval = _baseSpawnInterval * 0.5f;
+                _spawnIntervalHalved = true;
+                Debug.Log("[ObjectSpawner] 일반 소행성 수가 기준 미만으로 감소 — 스폰 간격을 절반으로 감소");
+            }
+        }
+        else
+        {
+            if (_spawnIntervalHalved)
+            {
+                spawnInterval = _baseSpawnInterval;
+                _spawnIntervalHalved = false;
+                Debug.Log("[ObjectSpawner] 일반 소행성 수가 기준 이상 — 스폰 간격을 원래 값으로 복구");
+            }
+        }
     }
 
     /// <summary>
@@ -460,6 +494,7 @@ public class ObjectSpawner : MonoBehaviour
         }
         if (despawn)
         {
+            // 디스폰 시 애니메이션(트리거: despawn)을 먼저 재생 후 파괴
             DespawnBlackHoleNow();
         }
     }
@@ -495,6 +530,7 @@ public class ObjectSpawner : MonoBehaviour
             }
             catch (OperationCanceledException) { break; }
 
+            // 수명 종료: 디스폰 애니메이션을 재생하고 완료를 기다린 뒤 파괴
             DespawnBlackHoleNow();
         }
     }
@@ -547,8 +583,85 @@ public class ObjectSpawner : MonoBehaviour
     private void DespawnBlackHoleNow()
     {
         if (_activeBlackHole == null) return;
-        Destroy(_activeBlackHole);
-        _activeBlackHole = null;
+        var go = _activeBlackHole;
+        _activeBlackHole = null; // 다음 스폰을 막지 않기 위해 즉시 해제
+        PlayBlackHoleDespawnAndDestroyAsync(go).Forget();
+    }
+
+    // 블랙홀 디스폰 애니메이션을 재생하고 끝난 후 파괴한다.
+    private async UniTaskVoid PlayBlackHoleDespawnAndDestroyAsync(GameObject go)
+    {
+        if (go == null) return;
+
+        var animator = go.GetComponentInChildren<Animator>();
+        if (animator == null)
+        {
+            // 애니메이터가 없으면 즉시 파괴
+            Destroy(go);
+            return;
+        }
+
+        // 트리거 발화
+        try
+        {
+            animator.ResetTrigger(GameConstants.Anim.BlackHoleDespawnTrigger);
+            animator.SetTrigger(GameConstants.Anim.BlackHoleDespawnTrigger);
+        }
+        catch
+        {
+            // 트리거 세팅 실패 시에도 안전하게 파괴하도록 폴백
+            Destroy(go);
+            return;
+        }
+
+        // 한 프레임 대기하여 전이 시작을 보장
+        await UniTask.Yield(PlayerLoopTiming.Update);
+
+        float timeout = 5f; // 안전 타임아웃
+        float elapsed = 0f;
+        bool inDespawn = false;
+
+        // 가능하면 Despawn 태그 상태 진입을 기다림
+        for (int i = 0; i < 180; i++) // 최대 약 3초 시도
+        {
+            if (animator == null) break;
+            var st = animator.GetCurrentAnimatorStateInfo(0);
+            if (st.IsTag(GameConstants.Anim.BlackHoleDespawnStateTag))
+            {
+                inDespawn = true;
+                break;
+            }
+            await UniTask.Yield(PlayerLoopTiming.Update);
+        }
+
+        if (animator != null)
+        {
+            if (inDespawn)
+            {
+                // 디스폰 상태가 끝날 때까지 대기
+                while (animator != null)
+                {
+                    var st = animator.GetCurrentAnimatorStateInfo(0);
+                    if (!animator.IsInTransition(0) && st.IsTag(GameConstants.Anim.BlackHoleDespawnStateTag) && st.normalizedTime >= 0.999f)
+                    {
+                        break;
+                    }
+                    elapsed += Time.deltaTime;
+                    if (elapsed > timeout) break;
+                    await UniTask.Yield(PlayerLoopTiming.Update);
+                }
+            }
+            else
+            {
+                // 태그를 알 수 없으면 짧게 대기 후 파괴(폴백)
+                await UniTask.Delay(TimeSpan.FromSeconds(0.5f));
+            }
+        }
+
+        if (go != null)
+        {
+            Destroy(go);
+        }
     }
     #endregion // 블랙홀
 

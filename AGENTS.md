@@ -2,24 +2,41 @@
 
 ## Agent-Specific Instructions
 
-- Make sure to proceed with reasoning and work in English and ANSWER ONLY THE FINAL ANSWER IN KOREAN.
-- 비동기 작업 구현 시 UniTask를 활용할 것.
-- 주석 및 `Debug.Log()`, `Debug.LogError()`, `Debug.LogWarning()`의 문자열, 깃 커밋 메시지를 한글로 작성할 것.
-- `FindObjectOfType` 사용이 필요하다면 대신 `FindFirstObjectByType`(제네릭 포함) 사용으로 대체할 것.
-- 단순 질문 답변을 제외한 나머지 코딩, 파일 수정 등의 작업이 끝날 때마다 반드시, 루트의 `WORKLOG.MD`에 동일한 작업 내용을 즉시 기록할 것.
-  - WORKLOG 작성 형식: `YYYY-MM-DD HH:MM | 타입 | 요약 | 파일1,파일2`
-    - 시간은 24시간 표기, 로컬 시간 사용
-    - 타입은 Conventional Commits 범주 권장: feat, fix, chore, docs, refactor, test 등
-    - 파일은 콤마로 구분하며 경로는 리포지토리 루트 기준 상대경로 사용
-- 커밋 메시지 작성 시 `WORKLOG.MD`의 북마크부터 문서 끝까지의 변경 요약을 활용할 것.
-  - 신규 항목은 반드시 `<!-- COMMIT_BOOKMARK -->` 너머 맨 아래 줄에 추가할 것.
-  - 커밋 완료 후에는 북마크를 최신 위치로 이동(또는 훅에 의해 자동 갱신)하여, 이후 커밋 메시지 요약 범위가 북마크 이후~문서 끝이 되도록 유지할 것.
-- 커밋 메시지 작성 시 `WORKLOG.MD` 요약을 참고하되, 생성 후 즉시 삭제되었거나 결과적으로 원상복구되어 실질 변화가 없는 작업(예: 임시 파일/코드 추가 후 제거)은 커밋 메시지에 포함하지 말 것.
-- 명명 규칙을 엄격 준수하고 불일치 발견 시 즉시 통일할 것:
+- Reasoning 및 작업 과정은 **영어**로 수행하되, **최종 답변은 한국어**로 작성한다.
+- 비동기 작업은 반드시 **UniTask**를 활용한다.
+- 주석, `Debug.Log()`, `Debug.LogError()`, `Debug.LogWarning()`의 문자열, 그리고 깃 커밋 메시지는 **한글로 작성**한다.
+- `FindObjectOfType` 사용이 필요할 경우, 반드시 `FindFirstObjectByType`(제네릭 포함)으로 대체한다.
+
+### Worklog 작성 규칙
+
+- 단순 질문 답변을 제외한 **코딩, 파일 수정 등 모든 작업이 완료될 때마다** 루트의 `WORKLOG.MD`에 즉시 기록한다.
+- 신규 항목은 **북마크(`<!-- COMMIT_BOOKMARK -->`) 이후 맨 아래 줄**에 추가한다.
+- 작성 형식:
+
+  ```
+  YYYY-MM-DD HH:MM | 타입 | 요약 | 파일1,파일2
+  ```
+
+  - 시간: 24시간 표기, 로컬 시간 기준
+  - 타입: Conventional Commits 권장 (feat, fix, chore, docs, refactor, test 등)
+  - 파일은 콤마로 구분하며 경로는 리포지토리 루트 기준 상대경로 사용
+
+### Commit 연계 규칙
+
+- 커밋 메시지는 `WORKLOG.MD`의 **북마크(`<!-- COMMIT_BOOKMARK -->`) 이후 \~ 문서 끝까지의 변경 요약**을 활용한다.
+- 커밋 완료 후 북마크를 최신 위치로 이동(또는 훅에 의해 자동 갱신)한다.
+- 생성 후 즉시 삭제되었거나 원상복구된 항목(실질 변화 없음)은 커밋 메시지에 포함하지 않는다.
+
+### 코딩 스타일 규칙
+
+- 명명 규칙을 엄격히 준수하며, 불일치 발견 시 즉시 통일한다:
+
   - 지역 변수/매개변수: `camelCase`
-  - 클래스·메서드·속성·public 멤버: `PascalCase`
-  - private 필드: `_camelCase` (직렬화 필드는 `[SerializeField] private camelCase`)
-- 스크립트 생성 시 인코딩은 UTF-8, 줄바꿈은 LF 를 사용한다.
+  - 클래스, 메서드, 속성, public 멤버: `PascalCase`
+  - private 필드: `_camelCase`
+  - `[SerializeField] private` 필드: `camelCase`
+
+- 모든 스크립트는 **UTF-8 인코딩**과 **LF 줄바꿈**을 사용한다.
 
 ## Game Concept
 

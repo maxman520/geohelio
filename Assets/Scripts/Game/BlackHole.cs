@@ -1,113 +1,155 @@
+using System.Threading;
+using Cysharp.Threading.Tasks;
 using UnityEngine;
 
 /// <summary>
-/// 블랙홀: 플레이어(또는 플레이어 루트가 가진 콜라이더)와 충돌 시 즉시 게임오버 처리.
-/// 수명/스폰 주기 등은 BlackHoleSpawner에서 관리한다.
+/// 블랙홀: 스폰 시 서서히 나타나는(알파 페이드 인) 연출을 담당한다.
+/// - 스폰 시 자식 포함 SpriteRenderer 알파를 0→1로 보간한다.
+/// - 파괴/비활성화 시 페이드 작업을 정리하고 알파를 복구한다.
 /// </summary>
 public class BlackHole : MonoBehaviour
 {
-    [Header("참조")]
-    [SerializeField] private Collider2D collider2d;   // 트리거 콜라이더(프리팹에서 지정 권장)
-    [SerializeField] private Rigidbody2D rb2d;        // 선택(필수 아님)
+    [Header("스폰 이펙트")]
+    [Tooltip("스폰 시 알파 0→1로 서서히 나타나기")]
+    [SerializeField] private bool fadeInOnSpawn = true;
+    [Tooltip("스폰 페이드 인 시간(초)")]
+    [SerializeField] private float fadeInDuration = 0.25f;
+    [Tooltip("알파 페이드 인을 적용할 스프라이트 렌더러들. 비워두면 자식에서 자동 수집")]
+    [SerializeField] private SpriteRenderer[] spriteRenderers;
 
-    [Header("흡인 설정")]
-    [Tooltip("플레이어의 공전 중심을 블랙홀로 이동시키는 속도(초당 거리)")]
-    [SerializeField] private float pullStrength = 8f;
-    [Tooltip("흡인이 적용되는 최대 범위(월드 단위). 0이면 항상 적용")]
-    [SerializeField] private float pullRange = 6f;
+    [Header("흡인(플레이어)")]
+    [Tooltip("플레이어를 블랙홀 중심으로 끌어당기는 속도(단위/초)")]
+    [SerializeField] private float maxPullSpeed = 3.0f;
+    [Tooltip("디스폰 상태 판정용 애니메이터(비워두면 자식에서 자동 수집)")]
+    [SerializeField] private Animator animator;
+    [Tooltip("디스폰 상태 태그 이름(애니메이터 상태 태그)")]
+    [SerializeField] private string despawnStateTag = GameConstants.Anim.BlackHoleDespawnStateTag;
 
-    // 캐시: 플레이어 컨트롤러
+    private CancellationTokenSource _fadeCts;
     private PlayerController _player;
 
     private void Awake()
     {
-        // 컴포넌트 자동 할당(누락 시 보완)
-        if (collider2d == null) collider2d = GetComponent<Collider2D>();
-        if (rb2d == null) rb2d = GetComponent<Rigidbody2D>();
+        // 렌더러 목록 자동 수집(명시되지 않은 경우)
+        if (spriteRenderers == null || spriteRenderers.Length == 0)
+            spriteRenderers = GetComponentsInChildren<SpriteRenderer>(includeInactive: true);
 
-        if (collider2d == null)
-        {
-            // 최소한의 안전장치: 콜라이더가 없으면 원형 트리거를 추가
-            collider2d = gameObject.AddComponent<CircleCollider2D>();
-            ((CircleCollider2D)collider2d).isTrigger = true;
-            Debug.LogWarning("[BlackHole] 프리팹에 Collider2D가 없어 CircleCollider2D(Trigger)를 자동 추가했습니다.");
-        }
-        else if (!collider2d.isTrigger)
-        {
-            collider2d.isTrigger = true; // 충돌은 트리거로 처리
-        }
+        // 플레이어 참조 캐시(가능 시)
+        _player = FindFirstObjectByType<PlayerController>();
+
+        // 애니메이터 참조(없으면 자식에서 탐색)
+        if (animator == null) animator = GetComponentInChildren<Animator>();
     }
 
-    private void OnValidate()
+    private void OnEnable()
     {
-        // 인스펙터에서 음수값 방지
-        if (pullStrength < 0f) pullStrength = 0f;
-        if (pullRange < 0f) pullRange = 0f;
+        // 기존 페이드 작업 정리 후 새 작업 준비
+        _fadeCts?.Cancel();
+        _fadeCts?.Dispose();
+        _fadeCts = null;
+
+        if (!fadeInOnSpawn || spriteRenderers == null || spriteRenderers.Length == 0)
+        {
+            SetAlpha(1f);
+            return;
+        }
+
+        _fadeCts = new CancellationTokenSource();
+        SetAlpha(0f);
+        FadeInAsync(_fadeCts.Token).Forget();
+    }
+
+    private void OnDisable()
+    {
+        // 페이드 작업 취소 및 알파 복구(잔상 방지)
+        _fadeCts?.Cancel();
+        _fadeCts?.Dispose();
+        _fadeCts = null;
+        SetAlpha(1f);
     }
 
     private void Update()
     {
-        // 플레이어 참조 확보(없으면 재탐색)
+        // 게임 진행 중에만 흡인 처리
+        var gm = GameManager.Instance;
+        if (gm == null || gm.State != GameManager.GameState.Playing) return;
+
         if (_player == null)
         {
-            _player = Object.FindFirstObjectByType<PlayerController>();
+            _player = FindFirstObjectByType<PlayerController>();
+            if (_player == null) return;
         }
 
-        if (_player == null) return;
+        // 디스폰 중에는 흡인을 중단한다.
+        if (IsDespawning()) return;
 
-        // 현재 공전 중심(지구 또는 태양)의 위치를 블랙홀로 이동
-        Transform centerTr = _player.CurrentCenter;
+        // 플레이어의 '회전 중심'을 기준으로 끌어당긴다(지구/태양 중 현재 중심)
+        var centerTr = _player.CurrentCenter;
         if (centerTr == null) return;
+        Vector3 p = centerTr.position;
+        Vector3 c = transform.position;
+        Vector3 v = c - p; v.z = 0f;
+        float d = v.magnitude;
+        if (d <= 1e-4f) return;
 
-        Vector3 toCenter = transform.position - centerTr.position;
-        float dist = toCenter.magnitude;
-        if (pullRange <= 0f || dist <= pullRange)
-        {
-            float step = pullStrength * Time.deltaTime;
-            centerTr.position = Vector3.MoveTowards(centerTr.position, transform.position, step);
-        }
+        // 반경 제한 없이 항상 플레이어를 블랙홀 쪽으로 이동(상한 속도 사용)
+        float speed = Mathf.Max(0f, maxPullSpeed);
+        float step = speed * Time.deltaTime;
+        if (step <= 0f) return;
 
-        // 공전 중심이 블랙홀 트리거 내부에 들어왔는지 검사하여 게임오버 처리
-        if (collider2d != null && collider2d.OverlapPoint(centerTr.position))
+        Vector3 delta = v.normalized * Mathf.Min(step, d);
+        centerTr.position = p + delta;
+    }
+
+    // 스프라이트 알파 일괄 설정
+    private void SetAlpha(float a)
+    {
+        if (spriteRenderers == null) return;
+        a = Mathf.Clamp01(a);
+        for (int i = 0; i < spriteRenderers.Length; i++)
         {
-            var gm = GameManager.Instance != null ? GameManager.Instance : Object.FindFirstObjectByType<GameManager>();
-            if (gm != null)
-            {
-                Debug.Log("[BlackHole] 공전 중심이 블랙홀에 진입 — 게임오버 처리");
-                gm.EndGame();
-            }
+            var r = spriteRenderers[i];
+            if (r == null) continue;
+            var c = r.color; c.a = a; r.color = c;
         }
     }
 
-    private void OnTriggerEnter2D(Collider2D other)
+    // 페이드 인 비동기 처리(UniTask)
+    private async UniTaskVoid FadeInAsync(CancellationToken ct)
     {
-        if (other == null) return;
-
-        // 플레이어 판정: 충돌체 또는 루트의 태그를 확인(자식 콜라이더 대응)
-        bool isPlayer = other.CompareTag(GameConstants.Tags.Player)
-                       || (other.transform.root != null && other.transform.root.CompareTag(GameConstants.Tags.Player))
-                       || (other.attachedRigidbody != null && other.attachedRigidbody.CompareTag(GameConstants.Tags.Player));
-
-        if (!isPlayer) return;
-
-        // 하위 호환: 플레이어 콜라이더 진입 시에도, 실제 공전 중심이 트리거 내부일 때만 게임오버
-        Transform centerTr = _player != null ? _player.CurrentCenter : null;
-        if (collider2d != null && centerTr != null && collider2d.OverlapPoint(centerTr.position))
+        float dur = Mathf.Max(0.01f, fadeInDuration);
+        float t = 0f;
+        while (t < dur)
         {
-            var gm = GameManager.Instance != null ? GameManager.Instance : Object.FindFirstObjectByType<GameManager>();
-            if (gm != null)
-            {
-                Debug.Log("[BlackHole] 공전 중심이 블랙홀에 진입 — 게임오버 처리");
-                gm.EndGame();
-            }
-            else
-            {
-                Debug.LogWarning("[BlackHole] GameManager를 찾지 못해 게임오버를 수행할 수 없습니다.");
-            }
+            if (ct.IsCancellationRequested) return;
+            t += Time.deltaTime;
+            SetAlpha(Mathf.Clamp01(t / dur));
+            await UniTask.Yield(PlayerLoopTiming.Update, ct);
         }
-        else
+        SetAlpha(1f);
+    }
+
+    private void OnValidate()
+    {
+        if (fadeInDuration < 0f) fadeInDuration = 0f;
+        if (maxPullSpeed < 0f) maxPullSpeed = 0f;
+    }
+
+    // 애니메이터가 디스폰 상태(또는 그 전이)인지 확인
+    private bool IsDespawning()
+    {
+        if (animator == null) return false;
+        string tag = string.IsNullOrEmpty(despawnStateTag) ? GameConstants.Anim.BlackHoleDespawnStateTag : despawnStateTag;
+        for (int i = 0; i < animator.layerCount; i++)
         {
-            Debug.Log("[BlackHole] 플레이어 콜라이더 진입 감지 — 공전 중심 미진입으로 무시");
+            if (animator.IsInTransition(i))
+            {
+                var next = animator.GetNextAnimatorStateInfo(i);
+                if (next.IsTag(tag)) return true;
+            }
+            var st = animator.GetCurrentAnimatorStateInfo(i);
+            if (st.IsTag(tag)) return true;
         }
+        return false;
     }
 }

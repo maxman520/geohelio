@@ -148,12 +148,22 @@
 2025-09-05 23:33 | refactor | SoftRestart 동작 복원 및 Ready 전용 API 추가(RestartToReadyAsync) | Assets/Scripts/Game/GameManager.cs
 2025-09-05 23:33 | chore | TopLeftButtons 재시작 호출 API를 RestartToReadyAsync로 변경 | Assets/Scripts/UI/TopLeftButtons.cs
 2025-09-05 23:41 | chore | Assets/Audio 폴더 메타 제외 전부 .gitignore 추가 | .gitignore
+
 2025-09-06 00:22 | docs | AudioManager 구현 계획 문서 추가 | AUDIO_MANAGER_PLAN.md
-
-<!-- COMMIT_BOOKMARK -->
-
 2025-09-06 00:32 | feat | AudioManager 기본 구현 및 오디오 토글 연동 | Assets/Scripts/Utilities/AudioManager.cs,Assets/Scripts/UI/TopLeftButtons.cs
 2025-09-06 00:42 | feat | 오디오 토글 버튼 아이콘 상태 동기화(음소거 이벤트 구독) | Assets/Scripts/Utilities/AudioManager.cs,Assets/Scripts/UI/TopLeftButtons.cs
 2025-09-06 00:49 | fix | Main/Game 씬 진입 시 기본 BGM 자동 재생 옵션 추가 | Assets/Scripts/Utilities/AudioManager.cs
 2025-09-06 01:03 | feat | SFX 카탈로그/열거형 도입 및 PlaySfx(SfxId) 추가 | Assets/Scripts/Utilities/SfxId.cs,Assets/Scripts/Utilities/SfxCatalog.cs,Assets/Scripts/Utilities/AudioManager.cs
 2025-09-06 01:26 | refactor | SFX를 문자열 키 기반으로 전환 및 PlaySfx(string) 도입 | Assets/Scripts/Utilities/SfxCatalog.cs,Assets/Scripts/Utilities/AudioManager.cs
+
+<!-- COMMIT_BOOKMARK -->
+
+2025-09-06 02:17 | feat | 타이틀 이미지 추가 | Assets/Sprites/AIGen/UI/Generated Image September 06, 2025 - 1_51AM.png,Assets/Sprites/AIGen/UI/Generated Image September 06, 2025 - 1_51AM.jpeg
+2025-09-06 13:21 | fix | 슈팅스타 중복 충돌 방지(플래그+콜라이더 비활성화) | Assets/Scripts/Game/ShootingStar.cs
+2025-09-06 13:21 | feat | 소행성 수 기반 스폰 간격 동적 조정(기준 미만 시 1/2) | Assets/Scripts/Game/ObjectSpawner.cs
+2025-09-06 14:02 | feat | 블랙홀 스폰 시 페이드 인 애니메이션 추가 | Assets/Scripts/Game/BlackHole.cs
+2025-09-06 15:09 | feat | 블랙홀 디스폰 시 despawn 트리거 후 애니메이션 완료 대기 | Assets/Scripts/Utilities/GameConstants.cs,Assets/Scripts/Game/ObjectSpawner.cs
+2025-09-06 15:12 | feat | 블랙홀 플레이어 흡인(반경/속도 선형 증가) 재구현 | Assets/Scripts/Game/BlackHole.cs
+2025-09-06 15:23 | refactor | 블랙홀 Attract 반경 제거 및 항상 플레이어 끌어당김 | Assets/Scripts/Game/BlackHole.cs
+2025-09-06 15:24 | fix | 흡인 기준을 플레이어 오브젝트에서 '회전 중심'으로 변경 | Assets/Scripts/Game/BlackHole.cs
+2025-09-06 15:35 | fix | 블랙홀 Despawn 중에는 흡인 중단(애니메이터 상태 태그 감지) | Assets/Scripts/Game/BlackHole.cs
