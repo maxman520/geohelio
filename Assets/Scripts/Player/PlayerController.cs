@@ -231,6 +231,20 @@ public class PlayerController : MonoBehaviour
         // 전환: 현재 기준을 반대로 바꿔 다음 프레임부터 해당 중심으로 공전
         _center = (_center == OrbitCenter.Earth) ? OrbitCenter.Sun : OrbitCenter.Earth;
         Debug.Log($"[PlayerController] 회전 중심 전환: {(_center == OrbitCenter.Earth ? "지구" : "태양")} 기준");
+
+        // SFX: 중심 전환 사운드 재생
+        try
+        {
+            var am = AudioManager.Instance;
+            if (am != null)
+            {
+                am.PlaySfx("SwapCenter");
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogWarning($"[PlayerController] 중심 전환 SFX 재생 중 예외: {e.Message}");
+        }
     }
 
     /// <summary>

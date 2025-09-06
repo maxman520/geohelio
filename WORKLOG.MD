@@ -156,8 +156,6 @@
 2025-09-06 01:03 | feat | SFX 카탈로그/열거형 도입 및 PlaySfx(SfxId) 추가 | Assets/Scripts/Utilities/SfxId.cs,Assets/Scripts/Utilities/SfxCatalog.cs,Assets/Scripts/Utilities/AudioManager.cs
 2025-09-06 01:26 | refactor | SFX를 문자열 키 기반으로 전환 및 PlaySfx(string) 도입 | Assets/Scripts/Utilities/SfxCatalog.cs,Assets/Scripts/Utilities/AudioManager.cs
 
-<!-- COMMIT_BOOKMARK -->
-
 2025-09-06 02:17 | feat | 타이틀 이미지 추가 | Assets/Sprites/AIGen/UI/Generated Image September 06, 2025 - 1_51AM.png,Assets/Sprites/AIGen/UI/Generated Image September 06, 2025 - 1_51AM.jpeg
 2025-09-06 13:21 | fix | 슈팅스타 중복 충돌 방지(플래그+콜라이더 비활성화) | Assets/Scripts/Game/ShootingStar.cs
 2025-09-06 13:21 | feat | 소행성 수 기반 스폰 간격 동적 조정(기준 미만 시 1/2) | Assets/Scripts/Game/ObjectSpawner.cs
@@ -167,3 +165,13 @@
 2025-09-06 15:23 | refactor | 블랙홀 Attract 반경 제거 및 항상 플레이어 끌어당김 | Assets/Scripts/Game/BlackHole.cs
 2025-09-06 15:24 | fix | 흡인 기준을 플레이어 오브젝트에서 '회전 중심'으로 변경 | Assets/Scripts/Game/BlackHole.cs
 2025-09-06 15:35 | fix | 블랙홀 Despawn 중에는 흡인 중단(애니메이터 상태 태그 감지) | Assets/Scripts/Game/BlackHole.cs
+
+<!-- COMMIT_BOOKMARK -->
+
+2025-09-06 16:58 | feat | 소행성 폭발 시작 시 SFX 재생(키: Explode) 추가 | Assets/Scripts/Game/Asteroid.cs
+2025-09-06 17:25 | feat | 플레이어가 장애물 소행성/슈팅스타 충돌 시 Hurt SFX 재생 | Assets/Scripts/Game/Asteroid.cs,Assets/Scripts/Game/ShootingStar.cs
+2025-09-06 17:26 | feat | 더블 스코어 모드 활성화 시 SFX 재생(키: OnDoubleScore) 추가 | Assets/Scripts/Game/DoubleScoreModeController.cs
+2025-09-06 18:04 | feat | 게임 오버 시 SFX 재생(키: GameOver) 추가 | Assets/Scripts/Game/GameManager.cs
+2025-09-06 18:05 | feat | 블랙홀 흡인 SFX 추가: 흡인 중 반복 재생 및 Despawn 시 중지 | Assets/Scripts/Game/BlackHole.cs,Assets\Scripts\Game\ObjectSpawner.cs
+2025-09-06 17:14 | feat | 플레이어 중심 전환 시 SFX 재생(키: SwapCenter) 추가 | Assets/Scripts/Player/PlayerController.cs
+2025-09-06 18:32 | refactor | 블랙홀 Despawn SFX를 애니메이션 이벤트로 재생하도록 변경 | Assets/Animation/_Object/Blackhole_Despawn.anim,Assets/Animation/_Object/Blackhole.controller

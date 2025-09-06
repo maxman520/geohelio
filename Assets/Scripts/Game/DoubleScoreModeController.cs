@@ -108,6 +108,20 @@ public class DoubleScoreModeController : MonoBehaviour
         _usedThisRun = true;
         _timeLeft = Duration;
 
+        // SFX: 더블 스코어 모드 활성화 사운드 재생
+        try
+        {
+            var am = AudioManager.Instance;
+            if (am != null)
+            {
+                am.PlaySfx("OnDoubleScore");
+            }
+        }
+        catch (Exception e)
+        {
+            Debug.LogWarning($"[DoubleScoreModeController] 더블 스코어 SFX 재생 중 예외: {e.Message}");
+        }
+
         // 게임/플레이어/점수 효과 적용
         if (gameManager != null)
         {
@@ -195,4 +209,3 @@ public class DoubleScoreModeController : MonoBehaviour
         }
     }
 }
-

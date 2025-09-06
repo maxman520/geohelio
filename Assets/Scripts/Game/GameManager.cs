@@ -262,6 +262,20 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
         SetState(GameState.GameOver);
         _comboCount = 0; // 게임 종료 시 콤보 초기화
 
+        // SFX: 게임 오버 사운드 재생
+        try
+        {
+            var am = AudioManager.Instance;
+            if (am != null)
+            {
+                am.PlaySfx("GameOver");
+            }
+        }
+        catch (Exception e)
+        {
+            Debug.LogWarning($"[GameManager] 게임오버 SFX 재생 중 예외: {e.Message}");
+        }
+
         // 스폰 중지
         if (asteroidSpawner == null)
             asteroidSpawner = FindFirstObjectByType<ObjectSpawner>();

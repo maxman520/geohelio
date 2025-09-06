@@ -16,12 +16,15 @@ namespace GeoHelio.UI
 
         private bool loading;
 
+        // 버튼 클릭 SFX는 AudioManager.OnClickBtn()을 직접 사용하세요.
+
         /// <summary>
         /// 시작 버튼 OnClick에 연결할 메서드.
         /// UniTask를 사용해 비동기 씬 로드를 수행한다.
         /// </summary>
         public async void OnClickStart()
         {
+            AudioManager.Instance.PlaySfx("OnClickBtn");
             if (loading)
             {
                 if (showLog)
@@ -60,11 +63,12 @@ namespace GeoHelio.UI
         }
 
         /// <summary>
-        /// 랭킹 버튼 OnClick에 연결할 메서드. (추후 구현)
+        /// 가이드 버튼 OnClick에 연결할 메서드. (추후 구현)
         /// </summary>
-        public void OnClickRanking()
+        public void OnClickGuide()
         {
-            Debug.Log("랭킹 화면은 추후에 구현됩니다.");
+            AudioManager.Instance.PlaySfx("OnClickBtn");
+            Debug.Log("가이드 화면은 추후에 구현됩니다.");
         }
     }
 }

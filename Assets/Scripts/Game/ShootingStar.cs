@@ -327,6 +327,9 @@ public class ShootingStar : MonoBehaviour
                 playerAnimator.Play(GameConstants.Anim.PlayerHurtState, 0, 0f);
             }
 
+            // 충돌 시 Hurt SFX 재생
+            AudioManager.Instance.PlaySfx("Hurt");
+
             // 동일 개체로 재충돌하지 않도록 즉시 콜라이더를 비활성화한다.
             if (col != null) col.enabled = false; // "한 번만 아프게" 처리
         }

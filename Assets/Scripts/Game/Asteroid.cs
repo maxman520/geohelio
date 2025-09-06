@@ -139,6 +139,9 @@ public class Asteroid : MonoBehaviour
                 {
                     playerAnimator.Play(GameConstants.Anim.PlayerHurtState, 0, 0f);
                 }
+
+                // 충돌 시 Hurt SFX 재생
+                AudioManager.Instance.PlaySfx("Hurt");
             }
             ExplodeAsync().Forget();
         }
@@ -149,6 +152,20 @@ public class Asteroid : MonoBehaviour
         _exploding = true;
         _driftActive = false; // 폭발 시 드리프트 정지
         if (col != null) col.enabled = false;
+
+        // 폭발 SFX 재생
+        try
+        {
+            var am = AudioManager.Instance;
+            if (am != null)
+            {
+                am.PlaySfx("Explode");
+            }
+        }
+        catch (Exception e)
+        {
+            Debug.LogWarning($"[Asteroid] 폭발 SFX 재생 중 예외: {e.Message}");
+        }
 
         // 애니메이션 트리거
         if (animator != null && !string.IsNullOrEmpty(explodeTrigger))

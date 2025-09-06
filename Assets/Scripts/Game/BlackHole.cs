@@ -25,8 +25,19 @@ public class BlackHole : MonoBehaviour
     [Tooltip("디스폰 상태 태그 이름(애니메이터 상태 태그)")]
     [SerializeField] private string despawnStateTag = GameConstants.Anim.BlackHoleDespawnStateTag;
 
+    [Header("SFX")]
+    [Tooltip("흡인 중 반복 재생할 SFX 키")]
+    [SerializeField] private string pullSfxKey = "BlackholePull";
+    [Tooltip("디스폰 진입 시 1회 재생할 SFX 키")]
+    [SerializeField] private string despawnSfxKey = "BlackholeDespawn";
+    [Tooltip("흡인 SFX 반복 재생 간격(초)")]
+    [SerializeField] private float pullSfxInterval = 1.0f;
+
     private CancellationTokenSource _fadeCts;
     private PlayerController _player;
+    private bool _gameOverTriggered;
+    private CancellationTokenSource _pullSfxCts;
+    private bool _despawnSfxPlayed;
 
     private void Awake()
     {
@@ -47,6 +58,9 @@ public class BlackHole : MonoBehaviour
         _fadeCts?.Cancel();
         _fadeCts?.Dispose();
         _fadeCts = null;
+        _gameOverTriggered = false;
+        _despawnSfxPlayed = false;
+        StopPullSfxLoop();
 
         if (!fadeInOnSpawn || spriteRenderers == null || spriteRenderers.Length == 0)
         {
@@ -66,11 +80,56 @@ public class BlackHole : MonoBehaviour
         _fadeCts?.Dispose();
         _fadeCts = null;
         SetAlpha(1f);
+        StopPullSfxLoop();
     }
 
     private void Update()
     {
         // 게임 진행 중에만 흡인 처리
+        var gm = GameManager.Instance;
+        if (gm == null || gm.State != GameManager.GameState.Playing)
+        {
+            StopPullSfxLoop();
+            return;
+        }
+
+        if (_player == null)
+        {
+            _player = FindFirstObjectByType<PlayerController>();
+            if (_player == null) { StopPullSfxLoop(); return; }
+        }
+
+        // 디스폰 중에는 흡인을 중단한다.
+        if (IsDespawning())
+        {
+            StopPullSfxLoop();
+            return;
+        }
+
+        // 플레이어의 '회전 중심'을 기준으로 끌어당긴다(지구/태양 중 현재 중심)
+        var centerTr = _player.CurrentCenter;
+        if (centerTr == null) { StopPullSfxLoop(); return; }
+        Vector3 p = centerTr.position;
+        Vector3 c = transform.position;
+        Vector3 v = c - p; v.z = 0f;
+        float d = v.magnitude;
+        if (d <= 1e-4f) { StopPullSfxLoop(); return; }
+
+        // 반경 제한 없이 항상 플레이어를 블랙홀 쪽으로 이동(상한 속도 사용)
+        float speed = Mathf.Max(0f, maxPullSpeed);
+        float step = speed * Time.deltaTime;
+        if (step <= 0f) { StopPullSfxLoop(); return; }
+
+        Vector3 delta = v.normalized * Mathf.Min(step, d);
+        centerTr.position = p + delta;
+        EnsurePullSfxLoop();
+    }
+
+    private void OnTriggerEnter2D(Collider2D other)
+    {
+        // 트리거: 블랙홀과 플레이어의 현재 공전 중심(지구/태양)이 접촉하면 게임오버
+        if (_gameOverTriggered) return;
+
         var gm = GameManager.Instance;
         if (gm == null || gm.State != GameManager.GameState.Playing) return;
 
@@ -80,25 +139,23 @@ public class BlackHole : MonoBehaviour
             if (_player == null) return;
         }
 
-        // 디스폰 중에는 흡인을 중단한다.
-        if (IsDespawning()) return;
-
-        // 플레이어의 '회전 중심'을 기준으로 끌어당긴다(지구/태양 중 현재 중심)
         var centerTr = _player.CurrentCenter;
-        if (centerTr == null) return;
-        Vector3 p = centerTr.position;
-        Vector3 c = transform.position;
-        Vector3 v = c - p; v.z = 0f;
-        float d = v.magnitude;
-        if (d <= 1e-4f) return;
+        if (centerTr == null || other == null) return;
 
-        // 반경 제한 없이 항상 플레이어를 블랙홀 쪽으로 이동(상한 속도 사용)
-        float speed = Mathf.Max(0f, maxPullSpeed);
-        float step = speed * Time.deltaTime;
-        if (step <= 0f) return;
+        var t = other.transform;
+        bool isCenter = (t == centerTr) || t.IsChildOf(centerTr);
+        if (!isCenter) return;
 
-        Vector3 delta = v.normalized * Mathf.Min(step, d);
-        centerTr.position = p + delta;
+        _gameOverTriggered = true;
+        Debug.Log("[BlackHole] 공전 중심이 블랙홀과 접촉하여 게임 오버 처리");
+        try
+        {
+            gm.EndGame();
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogWarning($"[BlackHole] 게임오버 처리 중 예외: {e.Message}");
+        }
     }
 
     // 스프라이트 알파 일괄 설정
@@ -133,6 +190,7 @@ public class BlackHole : MonoBehaviour
     {
         if (fadeInDuration < 0f) fadeInDuration = 0f;
         if (maxPullSpeed < 0f) maxPullSpeed = 0f;
+        if (pullSfxInterval < 0.05f) pullSfxInterval = 0.05f;
     }
 
     // 애니메이터가 디스폰 상태(또는 그 전이)인지 확인
@@ -151,5 +209,60 @@ public class BlackHole : MonoBehaviour
             if (st.IsTag(tag)) return true;
         }
         return false;
+    }
+
+    // 흡인 SFX 반복 재생 시작(이미 동작 중이면 무시)
+    private void EnsurePullSfxLoop()
+    {
+        if (_pullSfxCts != null) return;
+        _pullSfxCts = new CancellationTokenSource();
+        PullSfxLoopAsync(_pullSfxCts.Token).Forget();
+    }
+
+    // 흡인 SFX 반복 재생 중단
+    private void StopPullSfxLoop()
+    {
+        if (_pullSfxCts != null)
+        {
+            _pullSfxCts.Cancel();
+            _pullSfxCts.Dispose();
+            _pullSfxCts = null;
+        }
+    }
+
+    // 흡인 중 SFX를 주기적으로 재생(PlayOneShot 기반)
+    private async UniTaskVoid PullSfxLoopAsync(CancellationToken ct)
+    {
+        while (!ct.IsCancellationRequested)
+        {
+            try
+            {
+                var am = AudioManager.Instance;
+                if (am != null && !string.IsNullOrEmpty(pullSfxKey))
+                {
+                    am.PlaySfx(pullSfxKey);
+                }
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogWarning($"[BlackHole] 흡인 SFX 재생 중 예외: {e.Message}");
+            }
+
+            float wait = Mathf.Max(0.05f, pullSfxInterval);
+            try
+            {
+                await UniTask.Delay(System.TimeSpan.FromSeconds(wait), cancellationToken: ct);
+            }
+            catch (System.OperationCanceledException)
+            {
+                break;
+            }
+        }
+    }
+
+    // 애니메이션 이벤트 호출용 메소드
+    private void PlayDespawnSFX()
+    {
+        AudioManager.Instance.PlaySfx("BlackholeDespawn");
     }
 }

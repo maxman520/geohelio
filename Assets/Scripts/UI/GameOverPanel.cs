@@ -42,6 +42,7 @@ public class GameOverPanel : MonoBehaviour
     // 다시하기 버튼 클릭 처리: UIManager에 재시작 요청
     private void OnClickRetry()
     {
+        AudioManager.Instance.PlaySfx("OnClickBtn");
         var ui = UIManager.Instance;
         if (ui != null) ui.RequestRetry();
     }

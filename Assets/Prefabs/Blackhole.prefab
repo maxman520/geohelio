@@ -195,6 +195,9 @@ MonoBehaviour:
   fadeInOnSpawn: 1
   fadeInDuration: 0.25
   spriteRenderers: []
+  maxPullSpeed: 2
+  animator: {fileID: 4415691167741563226}
+  despawnStateTag: Despawn
 --- !u!1 &6289656665065651336
 GameObject:
   m_ObjectHideFlags: 0
