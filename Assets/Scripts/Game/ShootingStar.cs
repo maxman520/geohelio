@@ -35,6 +35,14 @@ public class ShootingStar : MonoBehaviour
     [Tooltip("발사 지연 시간(초): 경로 라인을 먼저 표시한 후 이 시간이 지난 뒤 이동 시작")]
     [SerializeField] private float launchDelaySeconds = 0.5f;
 
+    [Header("SFX")]
+    [Tooltip("이동 시작 시 1회 재생할 SFX 키")]
+    [SerializeField] private string startSfxKey = "ShootingStarStart";
+    [Tooltip("MoveAsync 진행 동안 주기적으로 재생할 SFX 키")]
+    [SerializeField] private string burnSfxKey = "ShootingStarBurn";
+    [Tooltip("버닝 SFX 반복 재생 간격(초)")]
+    [SerializeField] private float burnSfxInterval = 0.6f;
+
     private ObjectSpawner _spawner;
     private Vector3 _start, _end;     // 시작/도착 지점
     private Vector3 _control;         // 2차 베지어 제어점(통과 지점 조건으로 산출)
@@ -42,6 +50,7 @@ public class ShootingStar : MonoBehaviour
     private float _pathLength;      // 경로 근사 길이
     private float _speed;           // 현재 속도(단위/초)
     private CancellationTokenSource _moveCts;
+    private CancellationTokenSource _burnSfxCts;
     private float _lastHitTime = -999f;
     private Vector3[] _trajPoints;  // 라인 포인트(샘플)
     private float _trajTotalLength; // 전체 길이
@@ -65,6 +74,9 @@ public class ShootingStar : MonoBehaviour
         _moveCts?.Cancel();
         _moveCts?.Dispose();
         _moveCts = null;
+        _burnSfxCts?.Cancel();
+        _burnSfxCts?.Dispose();
+        _burnSfxCts = null;
         // 최초 활성화 시 중복 피격 상태를 리셋한다.
         _hasHitPlayer = false; // 한 슈팅스타당 1회만 피격 허용
         if (col != null) col.enabled = true;
@@ -80,6 +92,9 @@ public class ShootingStar : MonoBehaviour
         _moveCts?.Cancel();
         _moveCts?.Dispose();
         _moveCts = null;
+        _burnSfxCts?.Cancel();
+        _burnSfxCts?.Dispose();
+        _burnSfxCts = null;
     }
 
     /// <summary>
@@ -130,11 +145,26 @@ public class ShootingStar : MonoBehaviour
                 return; // 취소 시 종료
             }
         }
+        // 시작 SFX 재생
+        try
+        {
+            AudioManager.Instance.PlaySfx(startSfxKey);
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogWarning($"[ShootingStar] 시작 SFX 재생 중 예외: {e.Message}");
+        }
         MoveAsync(ct).Forget();
     }
 
     private async UniTaskVoid MoveAsync(CancellationToken ct)
     {
+        // 이동 중 버닝 SFX 반복 루프 시작
+        _burnSfxCts?.Cancel();
+        _burnSfxCts?.Dispose();
+        _burnSfxCts = new CancellationTokenSource();
+        BurnSfxLoopAsync(_burnSfxCts.Token).Forget();
+
         while (_u < 1f)
         {
             if (ct.IsCancellationRequested) return;
@@ -160,7 +190,40 @@ public class ShootingStar : MonoBehaviour
         }
 
         // 경로 종료 시 반환
+        // 버닝 SFX 루프 중단
+        _burnSfxCts?.Cancel();
+        _burnSfxCts?.Dispose();
+        _burnSfxCts = null;
         _spawner?.Despawn(transform);
+    }
+
+    // 이동 중 버닝 SFX 반복 재생 루프
+    private async UniTaskVoid BurnSfxLoopAsync(CancellationToken ct)
+    {
+        float interval = Mathf.Max(0.05f, burnSfxInterval);
+        while (!ct.IsCancellationRequested)
+        {
+            try
+            {
+                if (!string.IsNullOrEmpty(burnSfxKey))
+                {
+                    AudioManager.Instance.PlaySfx(burnSfxKey);
+                }
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogWarning($"[ShootingStar] 버닝 SFX 재생 중 예외: {e.Message}");
+            }
+
+            try
+            {
+                await UniTask.Delay(System.TimeSpan.FromSeconds(interval), cancellationToken: ct);
+            }
+            catch (System.OperationCanceledException)
+            {
+                break;
+            }
+        }
     }
 
     /// <summary>

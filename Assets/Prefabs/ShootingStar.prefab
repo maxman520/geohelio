@@ -338,6 +338,9 @@ MonoBehaviour:
   speedRange: {x: 4, y: 7}
   hitCooldown: 0.5
   launchDelaySeconds: 1
+  startSfxKey: ShootingStarStart
+  burnSfxKey: ShootingStarBurn
+  burnSfxInterval: 2.5
 --- !u!1 &7983039202033718866
 GameObject:
   m_ObjectHideFlags: 0

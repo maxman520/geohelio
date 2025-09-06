@@ -18,10 +18,8 @@ public class AudioManager : SingletonMonoBehaviour<AudioManager>
     [SerializeField] private AudioSource sfxSource; // SFX 전용 소스
 
     [Header("기본 설정")]
-    [Tooltip("메인 씬 기본 BGM(선택)")]
-    [SerializeField] private AudioClip defaultMainBgm;
-    [Tooltip("게임 씬 기본 BGM(선택)")]
-    [SerializeField] private AudioClip defaultGameBgm;
+    [Tooltip("모든 씬에서 공통으로 사용할 기본 BGM(선택)")]
+    [SerializeField] private AudioClip defaultBgm;
     [Tooltip("기본 페이드 시간(초)")]
     [SerializeField] private float defaultFadeSeconds = 0.5f;
 
@@ -56,19 +54,11 @@ public class AudioManager : SingletonMonoBehaviour<AudioManager>
         if (!autoPlayDefaultOnStart) return;
         if (bgmSource != null && bgmSource.isPlaying) return;
 
-        var sceneName = SceneManager.GetActiveScene().name;
         try
         {
-            if (!string.IsNullOrEmpty(sceneName))
+            if (defaultBgm != null)
             {
-                if (sceneName == GameConstants.Scenes.Main && defaultMainBgm != null)
-                {
-                    PlayBgmAsync(defaultMainBgm, true).Forget();
-                }
-                else if (sceneName == GameConstants.Scenes.Game && defaultGameBgm != null)
-                {
-                    PlayBgmAsync(defaultGameBgm, true).Forget();
-                }
+                PlayBgmAsync(defaultBgm, true).Forget();
             }
         }
         catch (Exception e)

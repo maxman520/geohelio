@@ -447,6 +447,25 @@ public class ObjectSpawner : MonoBehaviour
         SpawnShootingAt(startFallback, endFallback, passPointFb, spdFb);
         return true;
     }
+    private void SpawnShootingAt(Vector3 start, Vector3 end, Vector3 passPoint, float speed)
+    {
+        var go = GetFromPool(shootingStarPrefab);
+        go.transform.SetParent(transform, false);
+        go.transform.position = start;
+        go.transform.rotation = Quaternion.identity;
+
+        var star = go.GetComponent<ShootingStar>();
+        if (star == null)
+        {
+            Debug.LogError("[ObjectSpawner] shootingStarPrefab에 ShootingStar 컴포넌트가 없습니다. 스폰을 취소합니다.");
+            ReturnToPool(go);
+            return;
+        }
+        // 먼저 목록에 추가하여 이동 시작 직후 디스폰되어도 올바른 풀로 복귀되게 함
+        _spawnedShootingStars.Add(go.transform);
+        star.Initialize(this);
+        star.Launch(start, end, passPoint, speed);
+    }
     #endregion // 슈팅스타
 
     /// <summary>
@@ -1119,28 +1138,6 @@ public class ObjectSpawner : MonoBehaviour
         }
         // 목록에 없더라도 풀로 반환(외부에서 직접 호출된 경우 대비)
         ReturnToPool(go);
-    }
-
-    
-
-    private void SpawnShootingAt(Vector3 start, Vector3 end, Vector3 passPoint, float speed)
-    {
-        var go = GetFromPool(shootingStarPrefab);
-        go.transform.SetParent(transform, false);
-        go.transform.position = start;
-        go.transform.rotation = Quaternion.identity;
-
-        var star = go.GetComponent<ShootingStar>();
-        if (star == null)
-        {
-            Debug.LogError("[ObjectSpawner] shootingStarPrefab에 ShootingStar 컴포넌트가 없습니다. 스폰을 취소합니다.");
-            ReturnToPool(go);
-            return;
-        }
-        // 먼저 목록에 추가하여 이동 시작 직후 디스폰되어도 올바른 풀로 복귀되게 함
-        _spawnedShootingStars.Add(go.transform);
-        star.Initialize(this);
-        star.Launch(start, end, passPoint, speed);
     }
 
     // 플레이어 생존 시간에 따른 장애물 최대 동시 개수(1단계:2, 2단계:3, 3단계+:4)
