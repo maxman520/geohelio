@@ -276,6 +276,20 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
             Debug.LogWarning($"[GameManager] 게임오버 SFX 재생 중 예외: {e.Message}");
         }
 
+        // 데이터 저장: 최고 점수 갱신 및 즉시 저장 시도
+        try
+        {
+            var dm = DataManager.Instance;
+            if (dm != null)
+            {
+                dm.TrySetBestScore(_score); // 내부에서 저장 수행
+            }
+        }
+        catch (Exception e)
+        {
+            Debug.LogWarning($"[GameManager] 게임오버 시 데이터 저장 처리 중 예외: {e.Message}");
+        }
+
         // 스폰 중지
         if (asteroidSpawner == null)
             asteroidSpawner = FindFirstObjectByType<ObjectSpawner>();

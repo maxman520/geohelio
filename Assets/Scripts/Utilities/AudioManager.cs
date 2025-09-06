@@ -51,6 +51,21 @@ public class AudioManager : SingletonMonoBehaviour<AudioManager>
 
     private void Start()
     {
+        // DataManager 설정 적용 및 구독
+        try
+        {
+            var dm = DataManager.Instance;
+            if (dm != null)
+            {
+                SetMasterMute(dm.Muted);
+                dm.OnSettingsChanged += HandleDataSettingsChanged;
+            }
+        }
+        catch (Exception e)
+        {
+            Debug.LogWarning($"[AudioManager] DataManager 연동 중 예외: {e.Message}");
+        }
+
         if (!autoPlayDefaultOnStart) return;
         if (bgmSource != null && bgmSource.isPlaying) return;
 
@@ -64,6 +79,32 @@ public class AudioManager : SingletonMonoBehaviour<AudioManager>
         catch (Exception e)
         {
             Debug.LogWarning($"[AudioManager] 자동 BGM 재생 중 예외: {e.Message}");
+        }
+    }
+
+    private void OnDestroy()
+    {
+        try
+        {
+            var dm = DataManager.Instance;
+            if (dm != null) dm.OnSettingsChanged -= HandleDataSettingsChanged;
+        }
+        catch { }
+    }
+
+    private void HandleDataSettingsChanged()
+    {
+        try
+        {
+            var dm = DataManager.Instance;
+            if (dm != null)
+            {
+                SetMasterMute(dm.Muted);
+            }
+        }
+        catch (Exception e)
+        {
+            Debug.LogWarning($"[AudioManager] 설정 반영 중 예외: {e.Message}");
         }
     }
 

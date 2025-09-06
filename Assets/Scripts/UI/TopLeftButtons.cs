@@ -95,7 +95,7 @@ public class TopLeftButtons : MonoBehaviour
         }
     }
 
-    // 오디오 토글: 구현 비움
+    // 오디오 토글
     private void OnClickAudioToggle()
     {
         // 오디오 매니저 싱글턴을 통해 전역 음소거 토글
@@ -141,8 +141,29 @@ public class TopLeftButtons : MonoBehaviour
     // 진동 토글: 구현 비움
     private void OnClickVibrationToggle()
     {
-        // TODO: 진동 설정 토글 로직은 추후 구현
-        // Debug.Log("진동 토글 클릭");
+        var dm = DataManager.Instance;
+        if (dm == null)
+        {
+            Debug.LogWarning("[TopLeftButtons] DataManager 인스턴스를 찾지 못했습니다. 진동 토글을 수행할 수 없습니다.");
+            return;
+        }
+
+        bool next = !dm.VibrationEnabled;
+        dm.SetVibrationEnabled(next);
+
+        // 켜짐으로 전환될 때 짧게 피드백
+        if (next)
+        {
+            try
+            {
+                if (VibrationManager.Instance != null)
+                    VibrationManager.Instance.VibrateShort();
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogWarning($"[TopLeftButtons] 진동 피드백 중 예외: {e.Message}");
+            }
+        }
     }
 
     // 재시작: Ready 상태로 되돌림(즉시 시작하지 않음)

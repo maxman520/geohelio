@@ -9,6 +9,7 @@ public class GameOverPanel : MonoBehaviour
     [Header("참조")]
     [SerializeField] private GameObject root;           // 패널 루트(비활성/활성)
     [SerializeField] private TMP_Text scoreText;        // 최종 점수 표시(TextMeshPro)
+    [SerializeField] private TMP_Text highScoreText;    // 최고 점수 표시(TextMeshPro)
     [SerializeField] private Button retryButton;        // 다시하기 버튼
 
     private void Awake()
@@ -31,6 +32,13 @@ public class GameOverPanel : MonoBehaviour
             string formatted = finalScore.ToString("N0");
             scoreText.text = formatted;
         }
+
+        // 최고 점수도 즉시 반영
+        var dm = DataManager.Instance;
+        if (dm != null)
+        {
+            SetHighScoreText(dm.BestScore);
+        }
     }
 
     // 패널 숨김
@@ -45,5 +53,12 @@ public class GameOverPanel : MonoBehaviour
         AudioManager.Instance.PlaySfx("OnClickBtn");
         var ui = UIManager.Instance;
         if (ui != null) ui.RequestRetry();
+    }
+
+    // 최고 점수 텍스트를 천 단위 구분 기호와 함께 갱신
+    private void SetHighScoreText(int value)
+    {
+        if (highScoreText == null) return;
+        highScoreText.text = value.ToString("N0");
     }
 }

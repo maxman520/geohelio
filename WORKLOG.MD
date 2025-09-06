@@ -174,7 +174,12 @@
 2025-09-06 17:14 | feat | 플레이어 중심 전환 시 SFX 재생(키: SwapCenter) 추가 | Assets/Scripts/Player/PlayerController.cs
 2025-09-06 18:32 | refactor | 블랙홀 Despawn SFX를 애니메이션 이벤트로 재생하도록 변경 | Assets/Animation/\_Object/Blackhole_Despawn.anim,Assets/Animation/\_Object/Blackhole.controller
 
-<!-- COMMIT_BOOKMARK -->
-
 2025-09-06 18:40 | refactor | 씬 구분 없이 하나의 DefaultBGM만 자동 재생하도록 통일 | Assets/Scripts/Utilities/AudioManager.cs
 2025-09-06 19:24 | feat | 슈팅스타 이동 중 버닝 SFX 반복 재생 추가(키: ShootingStarBurn) | Assets/Scripts/Game/ShootingStar.cs
+
+<!-- COMMIT_BOOKMARK -->
+
+2025-09-06 21:11 | feat | DataManager/진동 매니저 기본 구현 및 오디오 연동 | Assets/Scripts/Utilities/DataManager.cs,Assets/Scripts/Utilities/VibrationManager.cs,Assets/Scripts/Utilities/AudioManager.cs
+2025-09-06 21:30 | feat | 게임 종료/앱 일시중지·종료 시 데이터 저장 로직 추가 | Assets/Scripts/Game/GameManager.cs,Assets/Scripts/Utilities/DataManager.cs
+2025-09-06 21:45 | feat | GameOverPanel: 최고 점수 텍스트 갱신 메소드 추가 | Assets/Scripts/UI/GameOverPanel.cs
+2025-09-06 21:52 | feat | 상단 좌측 버튼에 진동 On/Off 토글 구현(DataManager/VibrationManager 연동) | Assets/Scripts/UI/TopLeftButtons.cs
