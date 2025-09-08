@@ -2,6 +2,7 @@ using System;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using Cysharp.Threading.Tasks;
+using UnityEngine.InputSystem; // 신 Input System 사용
 
 /// <summary>
 /// 게임 진행 로직을 총괄하는 GameManager.
@@ -415,15 +416,22 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
     // 입력: 모바일 터치 Began 또는 PC 마우스 클릭
     private bool IsTap()
     {
-        if (Input.touchCount > 0)
+        // 새 Input System: 터치 또는 마우스 클릭의 프레임 시작을 검출
+        var touchscreen = Touchscreen.current;
+        if (touchscreen != null)
         {
-            for (int i = 0; i < Input.touchCount; i++)
+            foreach (var t in touchscreen.touches)
             {
-                if (Input.GetTouch(i).phase == TouchPhase.Began)
+                if (t.press.wasPressedThisFrame)
                     return true;
             }
         }
-        return Input.GetMouseButtonDown(0);
+
+        var mouse = Mouse.current;
+        if (mouse != null && mouse.leftButton.wasPressedThisFrame)
+            return true;
+
+        return false;
     }
 
     // 씬 전환 유틸

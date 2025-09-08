@@ -130,7 +130,7 @@ public class Asteroid : MonoBehaviour
                     Debug.LogWarning($"[Asteroid] 피격 처리 중 예외: {e.Message}");
                 }
 
-                // 충돌 시 항상 Hurt 애니메이션 재생(게임오버 직전에도 연출 시도)
+                // 충돌 시 항상 Hurt 애니메이션 재생 및 진동 재생
                 var playerRoot = other.transform.root != null ? other.transform.root.gameObject : other.gameObject;
                 var playerAnimator = playerRoot.GetComponent<Animator>();
                 if (playerAnimator == null)
@@ -142,6 +142,36 @@ public class Asteroid : MonoBehaviour
 
                 // 충돌 시 Hurt SFX 재생
                 AudioManager.Instance.PlaySfx("Hurt");
+
+                // 장애물 소행성: 중간 강도의 진동
+                try
+                {
+                    var vm = VibrationManager.Instance;
+                    if (vm != null)
+                    {
+                        vm.VibrateMedium();
+                    }
+                }
+                catch (Exception ve)
+                {
+                    Debug.LogWarning($"[Asteroid] 진동(중간) 재생 중 예외: {ve.Message}");
+                }
+            }
+            else
+            {
+                // 일반 소행성: 짧은 진동
+                try
+                {
+                    var vm = VibrationManager.Instance;
+                    if (vm != null)
+                    {
+                        vm.VibrateShort();
+                    }
+                }
+                catch (Exception ve)
+                {
+                    Debug.LogWarning($"[Asteroid] 진동(짧게) 재생 중 예외: {ve.Message}");
+                }
             }
             ExplodeAsync().Forget();
         }

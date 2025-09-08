@@ -182,8 +182,16 @@
 2025-09-06 21:45 | feat | GameOverPanel: 최고 점수 텍스트 갱신 메소드 추가 | Assets/Scripts/UI/GameOverPanel.cs
 2025-09-06 21:52 | feat | 상단 좌측 버튼에 진동 On/Off 토글 구현(DataManager/VibrationManager 연동) | Assets/Scripts/UI/TopLeftButtons.cs
 
-<!-- COMMIT_BOOKMARK -->
-
 2025-09-08 17:06 | chore | Burst 디버그 정보 폴더 .gitignore 추가(개별/패턴) | .gitignore
 2025-09-08 17:11 | docs | README 프로젝트 내용 갱신(영상/저작권 제외) | README.md
 2025-09-08 17:28 | docs | README 주요 기능 ‘오브젝트 스폰’ 항목 표현 보강 | README.md
+
+<!-- COMMIT_BOOKMARK -->
+
+2025-09-08 17:52 | refactor | 입력 시스템 신(Input System)으로 통일: PlayerController/GameManager 입력 처리 마이그레이션 | Assets/Scripts/Player/PlayerController.cs,Assets/Scripts/Game/GameManager.cs
+2025-09-08 17:52 | chore | Active Input Handling을 New로 설정(ProjectSettings) | ProjectSettings/ProjectSettings.asset
+2025-09-08 18:17 | feat | 소행성 충돌 시 진동 추가(장애물=중간, 일반=짧게) | Assets/Scripts/Game/Asteroid.cs
+2025-09-08 20:20 | fix | 블랙홀 게임오버 판정 Enter/Stay 공통화 및 디스폰 가드 추가 | Assets/Scripts/Game/BlackHole.cs
+2025-09-08 20:40 | feat | 슈팅스타 충돌 시 진동 재생 추가(장애물=중간 강도) | Assets/Scripts/Game/ShootingStar.cs
+2025-09-08 20:42 | chore | 루트 .utmp 로컬 폴더 .gitignore에 추가 | .gitignore
+2025-09-08 20:46 | chore | Unity 백업 폴더 .gitignore에 추가(특정/패턴) | .gitignore

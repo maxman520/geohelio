@@ -30,3 +30,10 @@ REFACTORING_PLAN.MD
 # Burst 디버그 정보 폴더(자동 생성, 배포 금지)
 /GeoHelio_BurstDebugInformation_DoNotShip/
 /*_BurstDebugInformation_DoNotShip/
+
+# 로컬 임시 작업 폴더(커밋 제외)
+/.utmp/
+
+# Unity가 생성하는 백업 폴더(자동 생성, 배포/커밋 금지)
+/GeoHelio_BackUpThisFolder_ButDontShipItWithYourGame/
+/*_BackUpThisFolder_ButDontShipItWithYourGame/

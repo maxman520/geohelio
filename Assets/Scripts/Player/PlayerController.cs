@@ -1,6 +1,7 @@
 using System;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.InputSystem; // 신 Input System 사용
 
 /// <summary>
 /// 플레이어 컨트롤러: 초기 상태에서 지구·태양 거리를 유지하며
@@ -192,16 +193,17 @@ public class PlayerController : MonoBehaviour
 
     private bool IsTap()
     {
-        // 모바일 터치 Began 중 UI 위를 제외하고만 판정
-        if (Input.touchCount > 0)
+        // 모바일 터치: 새 Input System 기반 판정
+        var touchscreen = Touchscreen.current;
+        if (touchscreen != null)
         {
-            for (int i = 0; i < Input.touchCount; i++)
+            foreach (var t in touchscreen.touches)
             {
-                var touch = Input.GetTouch(i);
-                if (touch.phase != TouchPhase.Began) continue;
+                if (!t.press.wasPressedThisFrame) continue;
 
                 // UI 위 터치라면 무시(버튼 등)
-                if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject(touch.fingerId))
+                int pointerId = t.touchId.ReadValue();
+                if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject(pointerId))
                 {
                     // Debug.Log("[PlayerController] UI 위 터치 입력 무시");
                     continue;
@@ -210,8 +212,9 @@ public class PlayerController : MonoBehaviour
             }
         }
 
-        // PC 마우스: UI 위 클릭은 무시
-        if (Input.GetMouseButtonDown(0))
+        // PC 마우스: 새 Input System 기반 판정(UI 위 클릭 무시)
+        var mouse = Mouse.current;
+        if (mouse != null && mouse.leftButton.wasPressedThisFrame)
         {
             if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())
             {

@@ -37,7 +37,6 @@ public class BlackHole : MonoBehaviour
     private PlayerController _player;
     private bool _gameOverTriggered;
     private CancellationTokenSource _pullSfxCts;
-    private bool _despawnSfxPlayed;
 
     private void Awake()
     {
@@ -45,11 +44,16 @@ public class BlackHole : MonoBehaviour
         if (spriteRenderers == null || spriteRenderers.Length == 0)
             spriteRenderers = GetComponentsInChildren<SpriteRenderer>(includeInactive: true);
 
-        // 플레이어 참조 캐시(가능 시)
-        _player = FindFirstObjectByType<PlayerController>();
+        
 
         // 애니메이터 참조(없으면 자식에서 탐색)
         if (animator == null) animator = GetComponentInChildren<Animator>();
+    }
+
+    private void Start()
+    {
+        // 플레이어 참조 캐시(가능 시)
+        _player = FindFirstObjectByType<PlayerController>();
     }
 
     private void OnEnable()
@@ -59,7 +63,6 @@ public class BlackHole : MonoBehaviour
         _fadeCts?.Dispose();
         _fadeCts = null;
         _gameOverTriggered = false;
-        _despawnSfxPlayed = false;
         StopPullSfxLoop();
 
         if (!fadeInOnSpawn || spriteRenderers == null || spriteRenderers.Length == 0)
@@ -128,10 +131,25 @@ public class BlackHole : MonoBehaviour
     private void OnTriggerEnter2D(Collider2D other)
     {
         // 트리거: 블랙홀과 플레이어의 현재 공전 중심(지구/태양)이 접촉하면 게임오버
+        TryTriggerGameOver(other);
+    }
+
+    private void OnTriggerStay2D(Collider2D other)
+    {
+        // 트리거 유지 중에도 동일 판정 적용(중심 전환으로 인한 즉시 겹침 케이스 대응)
+        TryTriggerGameOver(other);
+    }
+
+    // 공통 게임오버 판정 로직: Enter/Stay에서 모두 호출
+    private void TryTriggerGameOver(Collider2D other)
+    {
         if (_gameOverTriggered) return;
 
         var gm = GameManager.Instance;
         if (gm == null || gm.State != GameManager.GameState.Playing) return;
+
+        // 디스폰 중에는 게임오버 판정을 수행하지 않음
+        if (IsDespawning()) return;
 
         if (_player == null)
         {
