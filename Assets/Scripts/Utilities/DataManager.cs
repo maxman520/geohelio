@@ -143,14 +143,6 @@ public class DataManager : SingletonMonoBehaviour<DataManager>
     }
 
     /// <summary>
-    /// 현재 저장된 최고 점수를 반환한다.
-    /// </summary>
-    public int GetHighScore()
-    {
-        return BestScore;
-    }
-
-    /// <summary>
     /// 음소거 상태 설정(변경 시 저장 및 이벤트 알림).
     /// </summary>
     public void SetMuted(bool value)

@@ -194,9 +194,11 @@
 2025-09-08 20:42 | chore | 루트 .utmp 로컬 폴더 .gitignore에 추가 | .gitignore
 2025-09-08 20:46 | chore | Unity 백업 폴더 .gitignore에 추가(특정/패턴) | .gitignore
 
-<!-- COMMIT_BOOKMARK -->
-
 2025-09-08 21:19 | refactor | 오디오 음소거 토글을 DataManager 경유로 일원화 및 진동 아이콘 설정 변경 이벤트 동기화 | Assets/Scripts/UI/TopLeftButtons.cs
 2025-09-08 21:24 | refactor | HandleDataSettingsChanged에서 AudioManager 의존 제거, DataManager 상태로 아이콘 갱신 | Assets/Scripts/UI/TopLeftButtons.cs
 2025-09-08 21:31 | refactor | TopLeftButtons 사용자 수정 반영: 오디오/진동 토글 DataManager 경유 및 아이콘 갱신 로직 정리 | Assets/Scripts/UI/TopLeftButtons.cs
 2025-09-08 21:31 | refactor | 불필요한 이벤트 제거: OnBestScoreChanged | Assets\Scripts\Utilities\DataManager.cs
+
+<!-- COMMIT_BOOKMARK -->
+
+2025-09-08 21:36 | fix | 음소거 해제 시 SFX가 몰아서 재생되던 현상 수정 — AudioListener.pause 제거, SFX 재생 가드 추가 | Assets/Scripts/Utilities/AudioManager.cs

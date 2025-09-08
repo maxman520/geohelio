@@ -158,6 +158,7 @@ public class AudioManager : SingletonMonoBehaviour<AudioManager>
     public void PlaySfx(AudioClip clip, float volumeScale = 1f)
     {
         if (clip == null) return;
+        if (_muted) return;
         if (!isActiveAndEnabled) return;
         if (sfxSource == null) EnsureAudioSources();
 
@@ -255,7 +256,6 @@ public class AudioManager : SingletonMonoBehaviour<AudioManager>
     public void SetMasterMute(bool muted)
     {
         _muted = muted;
-        AudioListener.pause = muted;
         if (bgmSource != null) bgmSource.mute = muted;
         if (sfxSource != null) sfxSource.mute = muted;
         Debug.Log($"[AudioManager] 전역 음소거: {(muted ? "켜짐" : "꺼짐")} ");
@@ -292,6 +292,7 @@ public class AudioManager : SingletonMonoBehaviour<AudioManager>
     public void PlaySfx(string key, float volumeScale = 1f)
     {
         if (string.IsNullOrWhiteSpace(key)) return;
+        if (_muted) return; // 음소거 시 SFX 재생 가드
         if (sfxCatalog == null)
         {
             Debug.LogWarning("[AudioManager] SFX 카탈로그가 연결되지 않았습니다. PlaySfx(string) 호출을 무시합니다.");
