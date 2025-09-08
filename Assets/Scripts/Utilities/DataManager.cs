@@ -26,7 +26,6 @@ public class DataManager : SingletonMonoBehaviour<DataManager>
     public bool VibrationEnabled { get; private set; } = true;
 
     // 이벤트
-    public event Action<int> OnBestScoreChanged;    // 최고 점수 갱신 시
     public event Action OnSettingsChanged;          // 음소거/진동 변경 시
 
     private string _filePath;
@@ -84,9 +83,8 @@ public class DataManager : SingletonMonoBehaviour<DataManager>
         }
 
         ApplyData(data);
-        // 최초 로드 후 이벤트로 매니저들이 현재 상태를 재적용할 기회를 제공
+        // 최초 로드 후 이벤트로 매니저, 버튼들이 현재 상태를 재적용할 기회를 제공
         try { OnSettingsChanged?.Invoke(); } catch { }
-        try { OnBestScoreChanged?.Invoke(BestScore); } catch { }
     }
 
     /// <summary>
@@ -139,7 +137,6 @@ public class DataManager : SingletonMonoBehaviour<DataManager>
         {
             BestScore = score;
             SaveAsync().Forget();
-            try { OnBestScoreChanged?.Invoke(BestScore); } catch { }
             return true;
         }
         return false;

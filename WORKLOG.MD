@@ -186,8 +186,6 @@
 2025-09-08 17:11 | docs | README 프로젝트 내용 갱신(영상/저작권 제외) | README.md
 2025-09-08 17:28 | docs | README 주요 기능 ‘오브젝트 스폰’ 항목 표현 보강 | README.md
 
-<!-- COMMIT_BOOKMARK -->
-
 2025-09-08 17:52 | refactor | 입력 시스템 신(Input System)으로 통일: PlayerController/GameManager 입력 처리 마이그레이션 | Assets/Scripts/Player/PlayerController.cs,Assets/Scripts/Game/GameManager.cs
 2025-09-08 17:52 | chore | Active Input Handling을 New로 설정(ProjectSettings) | ProjectSettings/ProjectSettings.asset
 2025-09-08 18:17 | feat | 소행성 충돌 시 진동 추가(장애물=중간, 일반=짧게) | Assets/Scripts/Game/Asteroid.cs
@@ -195,3 +193,10 @@
 2025-09-08 20:40 | feat | 슈팅스타 충돌 시 진동 재생 추가(장애물=중간 강도) | Assets/Scripts/Game/ShootingStar.cs
 2025-09-08 20:42 | chore | 루트 .utmp 로컬 폴더 .gitignore에 추가 | .gitignore
 2025-09-08 20:46 | chore | Unity 백업 폴더 .gitignore에 추가(특정/패턴) | .gitignore
+
+<!-- COMMIT_BOOKMARK -->
+
+2025-09-08 21:19 | refactor | 오디오 음소거 토글을 DataManager 경유로 일원화 및 진동 아이콘 설정 변경 이벤트 동기화 | Assets/Scripts/UI/TopLeftButtons.cs
+2025-09-08 21:24 | refactor | HandleDataSettingsChanged에서 AudioManager 의존 제거, DataManager 상태로 아이콘 갱신 | Assets/Scripts/UI/TopLeftButtons.cs
+2025-09-08 21:31 | refactor | TopLeftButtons 사용자 수정 반영: 오디오/진동 토글 DataManager 경유 및 아이콘 갱신 로직 정리 | Assets/Scripts/UI/TopLeftButtons.cs
+2025-09-08 21:31 | refactor | 불필요한 이벤트 제거: OnBestScoreChanged | Assets\Scripts\Utilities\DataManager.cs
