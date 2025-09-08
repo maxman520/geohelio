@@ -26,3 +26,7 @@ REFACTORING_PLAN.MD
 /Assets/Audio/**
 !/Assets/Audio/**/*.meta
 !/Assets/Audio/*.meta
+
+# Burst 디버그 정보 폴더(자동 생성, 배포 금지)
+/GeoHelio_BurstDebugInformation_DoNotShip/
+/*_BurstDebugInformation_DoNotShip/
