@@ -47,19 +47,22 @@ public class TopLeftButtons : MonoBehaviour
 
     private void OnEnable()
     {
-        // GameManager 참조 및 상태 변경 이벤트 구독
-        _gm = GameManager.Instance != null ? GameManager.Instance : FindFirstObjectByType<GameManager>();
-        if (_gm != null)
+        if (restartButton != null)
         {
-            _gm.OnStateChanged += HandleStateChanged;
-            HandleStateChanged(_gm.State); // 초기 상태 반영
-        }
-        else
-        {
-            Debug.LogWarning("[TopLeftButtons] GameManager를 찾지 못했습니다. 재시작 버튼 상태 제어가 비활성화됩니다.");
-            SetRestartInteractable(false);
-        }
+            // GameManager 참조 및 상태 변경 이벤트 구독
+            _gm = GameManager.Instance != null ? GameManager.Instance : FindFirstObjectByType<GameManager>();
 
+            if (_gm != null)
+            {
+                _gm.OnStateChanged += HandleStateChanged;
+                HandleStateChanged(_gm.State); // 초기 상태 반영
+            }
+            else
+            {
+                Debug.LogWarning("[TopLeftButtons] GameManager를 찾지 못했습니다. 재시작 버튼 상태 제어가 비활성화됩니다.");
+                SetRestartInteractable(false);
+            }
+        }
         // DataManager 구독 및 오디오/진동 아이콘 초기 반영
         var dm = DataManager.Instance;
         if (dm != null)

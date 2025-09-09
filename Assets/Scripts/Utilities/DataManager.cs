@@ -37,6 +37,7 @@ public class DataManager : SingletonMonoBehaviour<DataManager>
         _filePath = Path.Combine(Application.persistentDataPath, "gh_settings.json");
     }
 
+    // 초기화 시점 보장을 위해 첫 씬 로드 전에 Instance를 강제로 호출 (뒤늦은 생성/로드 방지)
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
     private static void Bootstrap()
     {

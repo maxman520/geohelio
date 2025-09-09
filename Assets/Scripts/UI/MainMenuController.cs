@@ -19,6 +19,16 @@ namespace GeoHelio.UI
 
         // 버튼 클릭 SFX는 AudioManager.OnClickBtn()을 직접 사용하세요.
 
+        private void Awake()
+        {
+            // 메인 메뉴 진입 시 프레임 레이트를 60으로 설정
+            Application.targetFrameRate = 60;
+            if (showLog)
+            {
+                Debug.Log("메인 메뉴 프레임레이트를 60으로 설정했습니다.");
+            }
+        }
+
         /// <summary>
         /// 시작 버튼 OnClick에 연결할 메서드.
         /// UniTask를 사용해 비동기 씬 로드를 수행한다.

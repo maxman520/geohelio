@@ -205,5 +205,10 @@
 2025-09-09 17:34 | feat | 메인 메뉴 게임 방법 패널 스크립트 추가 및 가이드 버튼 연동 | Assets/Scripts/UI/HowToPlayPanel.cs,Assets/Scripts/UI/MainMenuController.cs
 2025-09-09 18:26 | docs | iOS 진동/햅틱 구현 계획 문서 추가 | IOS_VIBRATION_PLAN.md
 
-<!-- COMMIT_BOOKMARK -->
 2025-09-09 20:41 | feat | 가이드 패널 페이지 도트 UI 추가 및 연결 | Assets/Scenes/MainScene.unity
+
+<!-- COMMIT_BOOKMARK -->
+2025-09-09 20:55 | feat | 메인 메뉴 진입 시 프레임레이트 60 설정(Awake 추가) | Assets/Scripts/UI/MainMenuController.cs
+2025-09-09 21:34 | docs | SFX 핸들/채널 기반 리팩터링 계획 문서 추가(2안) | SFX_HANDLE_REFACTOR_PLAN.md
+2025-09-09 22:06 | fix | TopLeftButtons OnEnable에서 restartButton 가드 추가 | Assets/Scripts/UI/TopLeftButtons.cs
+2025-09-09 22:06 | docs | DataManager Bootstrap()에 동작 의도 주석 보강 | Assets/Scripts/Utilities/DataManager.cs
