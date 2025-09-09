@@ -114,7 +114,7 @@ namespace GeoHelio.UI
         }
 
         /// <summary>
-        /// 페이지 인디케이터(Dot)를 갱신한다. (선택 기능)
+        /// 페이지 인디케이터(Dot)를 갱신한다.
         /// </summary>
         private void UpdateDots()
         {
@@ -122,7 +122,9 @@ namespace GeoHelio.UI
             for (int i = 0; i < pageDots.Length; i++)
             {
                 if (pageDots[i] == null) continue;
+                // 페이지에 해당하는 Dots만 알파를 1로, 나머지는 0.35
                 pageDots[i].color = (i == _pageIndex) ? Color.white : new Color(1f, 1f, 1f, 0.35f);
+
             }
         }
     }
