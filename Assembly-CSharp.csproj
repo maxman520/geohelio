@@ -73,6 +73,7 @@
     <Compile Include="Assets\Scripts\Game\ShootingStar.cs" />
     <Compile Include="Assets\Scripts\Game\GameOverBoundaryVisualizer.cs" />
     <Compile Include="Assets\Scripts\Utilities\AudioManager.cs" />
+    <Compile Include="Assets\Scripts\UI\GuidePanel.cs" />
     <Compile Include="Assets\Scripts\UI\UIManager.cs" />
   </ItemGroup>
   <ItemGroup>

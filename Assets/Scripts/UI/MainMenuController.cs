@@ -13,6 +13,7 @@ namespace GeoHelio.UI
     {
         [SerializeField] private string targetSceneName = GameConstants.Scenes.Game; // 전환 대상 씬 이름
         [SerializeField] private bool showLog = true; // 디버그 로그 출력 여부
+        [SerializeField] private GuidePanel guidePanel; // 게임 방법 패널 참조
 
         private bool loading;
 
@@ -68,7 +69,13 @@ namespace GeoHelio.UI
         public void OnClickGuide()
         {
             AudioManager.Instance.PlaySfx("OnClickBtn");
-            Debug.Log("가이드 화면은 추후에 구현됩니다.");
+            if (guidePanel == null)
+            {
+                Debug.LogWarning("GuidePanel 참조가 비어있습니다. 인스펙터에서 연결하세요.");
+                return;
+            }
+            // 계획서에 따라 Show 호출(비동기)
+            guidePanel.Show().Forget();
         }
     }
 }

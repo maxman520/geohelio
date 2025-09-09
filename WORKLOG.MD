@@ -199,6 +199,9 @@
 2025-09-08 21:31 | refactor | TopLeftButtons 사용자 수정 반영: 오디오/진동 토글 DataManager 경유 및 아이콘 갱신 로직 정리 | Assets/Scripts/UI/TopLeftButtons.cs
 2025-09-08 21:31 | refactor | 불필요한 이벤트 제거: OnBestScoreChanged | Assets\Scripts\Utilities\DataManager.cs
 
+2025-09-08 21:36 | fix | 음소거 해제 시 SFX가 몰아서 재생되던 현상 수정 — AudioListener.pause 제거, SFX 재생 가드 추가 | Assets/Scripts/Utilities/AudioManager.cs
+
 <!-- COMMIT_BOOKMARK -->
 
-2025-09-08 21:36 | fix | 음소거 해제 시 SFX가 몰아서 재생되던 현상 수정 — AudioListener.pause 제거, SFX 재생 가드 추가 | Assets/Scripts/Utilities/AudioManager.cs
+2025-09-09 17:34 | feat | 메인 메뉴 게임 방법 패널 스크립트 추가 및 가이드 버튼 연동 | Assets/Scripts/UI/HowToPlayPanel.cs,Assets/Scripts/UI/MainMenuController.cs
+2025-09-09 18:26 | docs | iOS 진동/햅틱 구현 계획 문서 추가 | IOS_VIBRATION_PLAN.md
