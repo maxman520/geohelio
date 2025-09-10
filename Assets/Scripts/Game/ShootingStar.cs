@@ -12,9 +12,9 @@ using UnityEngine.Rendering;
 public class ShootingStar : MonoBehaviour
 {
     [Header("참조")]
-    [SerializeField] private Collider2D col;                     // 트리거 콜라이더
-    [SerializeField] private Rigidbody2D rb2d;                   // 선택(필수 아님)
-    [SerializeField] private Animator animator;                  // 선택(점화 애니메이션이 있을 수 있음)
+    [SerializeField] private Collider2D col;
+    [SerializeField] private Rigidbody2D rb2d;
+    [SerializeField] private Animator animator;
 
     [Header("예측 라인(점선)")]
     [Tooltip("예측 경로를 표시할 LineRenderer. 비워두면 자동 생성됨")]
@@ -40,8 +40,6 @@ public class ShootingStar : MonoBehaviour
     [SerializeField] private string startSfxKey = "ShootingStarStart";
     [Tooltip("MoveAsync 진행 동안 주기적으로 재생할 SFX 키")]
     [SerializeField] private string burnSfxKey = "ShootingStarBurn";
-    [Tooltip("버닝 SFX 반복 재생 간격(초)")]
-    [SerializeField] private float burnSfxInterval = 0.6f;
 
     private ObjectSpawner _spawner;
     private Vector3 _start, _end;     // 시작/도착 지점
@@ -50,11 +48,11 @@ public class ShootingStar : MonoBehaviour
     private float _pathLength;      // 경로 근사 길이
     private float _speed;           // 현재 속도(단위/초)
     private CancellationTokenSource _moveCts;
-    private CancellationTokenSource _burnSfxCts;
     private float _lastHitTime = -999f;
     private Vector3[] _trajPoints;  // 라인 포인트(샘플)
     private float _trajTotalLength; // 전체 길이
     private bool _hasHitPlayer;     // 동일 개체로는 플레이어를 한 번만 피격 처리
+    private AudioManager.SfxHandle _burnSfxHandle; // 루프 SFX 핸들(새 방식)
 
     public void Initialize(ObjectSpawner spawner)
     {
@@ -74,9 +72,9 @@ public class ShootingStar : MonoBehaviour
         _moveCts?.Cancel();
         _moveCts?.Dispose();
         _moveCts = null;
-        _burnSfxCts?.Cancel();
-        _burnSfxCts?.Dispose();
-        _burnSfxCts = null;
+        // 루프 SFX 핸들 정지
+        try { _burnSfxHandle?.Stop(0.03f); } catch { }
+        _burnSfxHandle = null;
         // 최초 활성화 시 중복 피격 상태를 리셋한다.
         _hasHitPlayer = false; // 한 슈팅스타당 1회만 피격 허용
         if (col != null) col.enabled = true;
@@ -92,9 +90,8 @@ public class ShootingStar : MonoBehaviour
         _moveCts?.Cancel();
         _moveCts?.Dispose();
         _moveCts = null;
-        _burnSfxCts?.Cancel();
-        _burnSfxCts?.Dispose();
-        _burnSfxCts = null;
+        try { _burnSfxHandle?.Stop(0.03f); } catch { }
+        _burnSfxHandle = null;
     }
 
     /// <summary>
@@ -121,7 +118,6 @@ public class ShootingStar : MonoBehaviour
             transform.right = -v0.normalized;
 
         // 예측 라인 준비(샘플 기반 곡선 표시)
-        EnsureTrajectory();
         BuildFullTrajectory();
         ApplyTrajectoryStyle();
         trajectory.enabled = true;
@@ -159,11 +155,18 @@ public class ShootingStar : MonoBehaviour
 
     private async UniTaskVoid MoveAsync(CancellationToken ct)
     {
-        // 이동 중 버닝 SFX 반복 루프 시작
-        _burnSfxCts?.Cancel();
-        _burnSfxCts?.Dispose();
-        _burnSfxCts = new CancellationTokenSource();
-        BurnSfxLoopAsync(_burnSfxCts.Token).Forget();
+        // 이동 중 버닝 SFX를 채널/핸들 기반 루프 재생
+        try
+        {
+            if (!string.IsNullOrEmpty(burnSfxKey) && AudioManager.Instance != null)
+            {
+                _burnSfxHandle = AudioManager.Instance.PlayLoopAttached(burnSfxKey, transform);
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogWarning($"[ShootingStar] 버닝 SFX 루프 시작 중 예외: {e.Message}");
+        }
 
         while (_u < 1f)
         {
@@ -189,70 +192,10 @@ public class ShootingStar : MonoBehaviour
             await UniTask.Yield(PlayerLoopTiming.Update, ct);
         }
 
-        // 경로 종료 시 반환
-        // 버닝 SFX 루프 중단
-        _burnSfxCts?.Cancel();
-        _burnSfxCts?.Dispose();
-        _burnSfxCts = null;
+        // 경로 이동 종료 시 반환/루프 SFX 정지
+        try { _burnSfxHandle?.Stop(0.03f); } catch { }
+        _burnSfxHandle = null;
         _spawner?.Despawn(transform);
-    }
-
-    // 이동 중 버닝 SFX 반복 재생 루프
-    private async UniTaskVoid BurnSfxLoopAsync(CancellationToken ct)
-    {
-        float interval = Mathf.Max(0.05f, burnSfxInterval);
-        while (!ct.IsCancellationRequested)
-        {
-            try
-            {
-                if (!string.IsNullOrEmpty(burnSfxKey))
-                {
-                    AudioManager.Instance.PlaySfx(burnSfxKey);
-                }
-            }
-            catch (System.Exception e)
-            {
-                Debug.LogWarning($"[ShootingStar] 버닝 SFX 재생 중 예외: {e.Message}");
-            }
-
-            try
-            {
-                await UniTask.Delay(System.TimeSpan.FromSeconds(interval), cancellationToken: ct);
-            }
-            catch (System.OperationCanceledException)
-            {
-                break;
-            }
-        }
-    }
-
-    /// <summary>
-    /// Trajectory LineRenderer가 없으면 생성한다.
-    /// </summary>
-    private void EnsureTrajectory()
-    {
-        if (trajectory != null) return;
-        var child = transform.Find("Trajectory");
-        GameObject go;
-        if (child == null)
-        {
-            go = new GameObject("Trajectory");
-            go.transform.SetParent(transform, false);
-        }
-        else go = child.gameObject;
-
-        trajectory = go.GetComponent<LineRenderer>();
-        if (trajectory == null) trajectory = go.AddComponent<LineRenderer>();
-
-        trajectory.useWorldSpace = true;
-#if UNITY_2022_1_OR_NEWER
-        trajectory.alignment = LineAlignment.View;
-#endif
-        trajectory.textureMode = LineTextureMode.Tile; // 대시 텍스처를 타일로 반복
-        trajectory.loop = false;
-        trajectory.shadowCastingMode = ShadowCastingMode.Off;
-        trajectory.receiveShadows = false;
-        // 소팅은 라인렌더러의 기본값 사용(필요 시 프리팹/인스펙터에서 직접 지정)
     }
 
     /// <summary>
@@ -358,7 +301,7 @@ public class ShootingStar : MonoBehaviour
     private void OnTriggerEnter2D(Collider2D other)
     {
         if (other == null) return;
-        // 플레이어와 충돌 시 Hurt 애니메이션 재생(연타 방지)
+        // 플레이어과의 충돌 체크
         if (other.CompareTag(GameConstants.Tags.Player) || other.transform.root.CompareTag(GameConstants.Tags.Player))
         {
             // 동일 슈팅스타 개체로는 1회만 피격 처리한다.

@@ -201,14 +201,24 @@
 
 2025-09-08 21:36 | fix | 음소거 해제 시 SFX가 몰아서 재생되던 현상 수정 — AudioListener.pause 제거, SFX 재생 가드 추가 | Assets/Scripts/Utilities/AudioManager.cs
 
-
 2025-09-09 17:34 | feat | 메인 메뉴 게임 방법 패널 스크립트 추가 및 가이드 버튼 연동 | Assets/Scripts/UI/HowToPlayPanel.cs,Assets/Scripts/UI/MainMenuController.cs
 2025-09-09 18:26 | docs | iOS 진동/햅틱 구현 계획 문서 추가 | IOS_VIBRATION_PLAN.md
 
 2025-09-09 20:41 | feat | 가이드 패널 페이지 도트 UI 추가 및 연결 | Assets/Scenes/MainScene.unity
 
-<!-- COMMIT_BOOKMARK -->
 2025-09-09 20:55 | feat | 메인 메뉴 진입 시 프레임레이트 60 설정(Awake 추가) | Assets/Scripts/UI/MainMenuController.cs
 2025-09-09 21:34 | docs | SFX 핸들/채널 기반 리팩터링 계획 문서 추가(2안) | SFX_HANDLE_REFACTOR_PLAN.md
 2025-09-09 22:06 | fix | TopLeftButtons OnEnable에서 restartButton 가드 추가 | Assets/Scripts/UI/TopLeftButtons.cs
 2025-09-09 22:06 | docs | DataManager Bootstrap()에 동작 의도 주석 보강 | Assets/Scripts/Utilities/DataManager.cs
+
+<!-- COMMIT_BOOKMARK -->
+
+2025-09-09 22:20 | feat | AudioManager에 SFX 채널 풀/핸들 시스템 추가 및 음소거 연동 | Assets/Scripts/Utilities/AudioManager.cs
+2025-09-09 22:20 | refactor | 슈팅스타/블랙홀 루프 SFX를 핸들 기반 루프로 전환 | Assets/Scripts/Game/ShootingStar.cs,Assets/Scripts/Game/BlackHole.cs
+2025-09-09 23:15 | docs | 변경 사항 요약 문서 추가(2025-09-09) | CHANGES_2025-09-09.md
+2025-09-10 16:12 | docs | SfxChannel API XML 문서 주석 추가 | Assets/Scripts/Utilities/AudioManager.cs
+2025-09-10 16:15 | refactor | AudioManager 정리 — #region 추가 및 불필요 함수 제거 | Assets/Scripts/Utilities/AudioManager.cs
+
+2025-09-10 16:37 | docs | SfxHandle API XML 문서 주석 추가 | Assets/Scripts/Utilities/AudioManager.cs
+
+2025-09-10 16:50 | docs | BlackHole 클래스 요약 주석 갱신 | Assets/Scripts/Game/BlackHole.cs

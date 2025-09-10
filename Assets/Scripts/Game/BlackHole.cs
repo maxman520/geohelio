@@ -3,9 +3,12 @@ using Cysharp.Threading.Tasks;
 using UnityEngine;
 
 /// <summary>
-/// 블랙홀: 스폰 시 서서히 나타나는(알파 페이드 인) 연출을 담당한다.
-/// - 스폰 시 자식 포함 SpriteRenderer 알파를 0→1로 보간한다.
-/// - 파괴/비활성화 시 페이드 작업을 정리하고 알파를 복구한다.
+/// 블랙홀(위험 오브젝트).
+/// - 활성화 시 자식 SpriteRenderer의 알파를 0→1로 페이드 인한다.
+/// - 플레이어의 현재 공전 중심을 자신의 위치 쪽으로 지속적으로 끌어당긴다(maxPullSpeed).
+/// - 디스폰 애니메이터 상태(태그) 전이/체류 중에는 흡인 및 게임오버 판정을 중단한다.
+/// - 블랙홀 콜라이더와 플레이어의 공전 중심이 접촉하면 게임 오버를 트리거한다.
+/// - 비활성화 시 진행 중인 페이드 작업을 취소하고 시각 상태를 복구한다.
 /// </summary>
 public class BlackHole : MonoBehaviour
 {
@@ -20,7 +23,7 @@ public class BlackHole : MonoBehaviour
     [Header("흡인(플레이어)")]
     [Tooltip("플레이어를 블랙홀 중심으로 끌어당기는 속도(단위/초)")]
     [SerializeField] private float maxPullSpeed = 3.0f;
-    [Tooltip("디스폰 상태 판정용 애니메이터(비워두면 자식에서 자동 수집)")]
+    [Tooltip("디스폰 상태 판정용 애니메이터(비워두면 자동 수집)")]
     [SerializeField] private Animator animator;
     [Tooltip("디스폰 상태 태그 이름(애니메이터 상태 태그)")]
     [SerializeField] private string despawnStateTag = GameConstants.Anim.BlackHoleDespawnStateTag;
@@ -36,7 +39,7 @@ public class BlackHole : MonoBehaviour
     private CancellationTokenSource _fadeCts;
     private PlayerController _player;
     private bool _gameOverTriggered;
-    private CancellationTokenSource _pullSfxCts;
+    private AudioManager.SfxHandle _pullSfxHandle; // 루프 SFX 핸들
 
     private void Awake()
     {
@@ -44,9 +47,8 @@ public class BlackHole : MonoBehaviour
         if (spriteRenderers == null || spriteRenderers.Length == 0)
             spriteRenderers = GetComponentsInChildren<SpriteRenderer>(includeInactive: true);
 
-        
-
-        // 애니메이터 참조(없으면 자식에서 탐색)
+        // 애니메이터 참조(없으면 자동 탐색)
+        if (animator == null) animator = GetComponent<Animator>();
         if (animator == null) animator = GetComponentInChildren<Animator>();
     }
 
@@ -78,7 +80,7 @@ public class BlackHole : MonoBehaviour
 
     private void OnDisable()
     {
-        // 페이드 작업 취소 및 알파 복구(잔상 방지)
+        // 페이드 작업 취소 및 알파 복구
         _fadeCts?.Cancel();
         _fadeCts?.Dispose();
         _fadeCts = null;
@@ -88,7 +90,7 @@ public class BlackHole : MonoBehaviour
 
     private void Update()
     {
-        // 게임 진행 중에만 흡인 처리
+        // 게임 진행 중이 아니면 흡인 SFX 중단
         var gm = GameManager.Instance;
         if (gm == null || gm.State != GameManager.GameState.Playing)
         {
@@ -102,23 +104,20 @@ public class BlackHole : MonoBehaviour
             if (_player == null) { StopPullSfxLoop(); return; }
         }
 
-        // 디스폰 중에는 흡인을 중단한다.
+        // 디스폰 중에는 흡인 SFX 중단
         if (IsDespawning())
         {
             StopPullSfxLoop();
             return;
         }
 
-        // 플레이어의 '회전 중심'을 기준으로 끌어당긴다(지구/태양 중 현재 중심)
         var centerTr = _player.CurrentCenter;
-        if (centerTr == null) { StopPullSfxLoop(); return; }
-        Vector3 p = centerTr.position;
-        Vector3 c = transform.position;
-        Vector3 v = c - p; v.z = 0f;
+        Vector3 p = centerTr.position; // 플레이어의 위치
+        Vector3 b = transform.position; // 블랙홀의 위치
+        Vector3 v = b - p; v.z = 0f;
         float d = v.magnitude;
-        if (d <= 1e-4f) { StopPullSfxLoop(); return; }
 
-        // 반경 제한 없이 항상 플레이어를 블랙홀 쪽으로 이동(상한 속도 사용)
+        // 플레이어의 '회전 중심'을 거리에 상관없이 끌어당긴다(지구/태양 중 현재 중심)
         float speed = Mathf.Max(0f, maxPullSpeed);
         float step = speed * Time.deltaTime;
         if (step <= 0f) { StopPullSfxLoop(); return; }
@@ -136,7 +135,7 @@ public class BlackHole : MonoBehaviour
 
     private void OnTriggerStay2D(Collider2D other)
     {
-        // 트리거 유지 중에도 동일 판정 적용(중심 전환으로 인한 즉시 겹침 케이스 대응)
+        // 트리거 유지 중에도 동일 판정 적용(Enter 된 뒤 중심 전환하면 게임오버가 되지 않는 버그 방지)
         TryTriggerGameOver(other);
     }
 
@@ -176,7 +175,7 @@ public class BlackHole : MonoBehaviour
         }
     }
 
-    // 스프라이트 알파 일괄 설정
+    // 블랙홀의 스프라이트 렌더러 알파 일괄 설정
     private void SetAlpha(float a)
     {
         if (spriteRenderers == null) return;
@@ -189,7 +188,7 @@ public class BlackHole : MonoBehaviour
         }
     }
 
-    // 페이드 인 비동기 처리(UniTask)
+    // 블랙홀 생성 시 연출. 페이드 인 비동기 처리(UniTask)
     private async UniTaskVoid FadeInAsync(CancellationToken ct)
     {
         float dur = Mathf.Max(0.01f, fadeInDuration);
@@ -211,7 +210,7 @@ public class BlackHole : MonoBehaviour
         if (pullSfxInterval < 0.05f) pullSfxInterval = 0.05f;
     }
 
-    // 애니메이터가 디스폰 상태(또는 그 전이)인지 확인
+    // 현재 애니메이터가 디스폰 상태(또는 그 전이)인지 확인
     private bool IsDespawning()
     {
         if (animator == null) return false;
@@ -229,58 +228,33 @@ public class BlackHole : MonoBehaviour
         return false;
     }
 
-    // 흡인 SFX 반복 재생 시작(이미 동작 중이면 무시)
+    // 채널/핸들 기반 흡인 SFX 재생 루프 시작(이미 동작 중이면 무시)
     private void EnsurePullSfxLoop()
     {
-        if (_pullSfxCts != null) return;
-        _pullSfxCts = new CancellationTokenSource();
-        PullSfxLoopAsync(_pullSfxCts.Token).Forget();
+        if (_pullSfxHandle != null) return;
+        try
+        {
+            if (!string.IsNullOrEmpty(pullSfxKey) && AudioManager.Instance != null)
+            {
+                _pullSfxHandle = AudioManager.Instance.PlayLoopAttached(pullSfxKey, transform);
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogWarning($"[BlackHole] 흡인 SFX 루프 시작 중 예외: {e.Message}");
+        }
     }
 
     // 흡인 SFX 반복 재생 중단
     private void StopPullSfxLoop()
     {
-        if (_pullSfxCts != null)
-        {
-            _pullSfxCts.Cancel();
-            _pullSfxCts.Dispose();
-            _pullSfxCts = null;
-        }
+        try { _pullSfxHandle?.Stop(0.03f); } catch { }
+        _pullSfxHandle = null;
     }
 
-    // 흡인 중 SFX를 주기적으로 재생(PlayOneShot 기반)
-    private async UniTaskVoid PullSfxLoopAsync(CancellationToken ct)
-    {
-        while (!ct.IsCancellationRequested)
-        {
-            try
-            {
-                var am = AudioManager.Instance;
-                if (am != null && !string.IsNullOrEmpty(pullSfxKey))
-                {
-                    am.PlaySfx(pullSfxKey);
-                }
-            }
-            catch (System.Exception e)
-            {
-                Debug.LogWarning($"[BlackHole] 흡인 SFX 재생 중 예외: {e.Message}");
-            }
-
-            float wait = Mathf.Max(0.05f, pullSfxInterval);
-            try
-            {
-                await UniTask.Delay(System.TimeSpan.FromSeconds(wait), cancellationToken: ct);
-            }
-            catch (System.OperationCanceledException)
-            {
-                break;
-            }
-        }
-    }
-
-    // 애니메이션 이벤트 호출용 메소드
+    // 애니메이션에서 호출. SFX 연출용 메소드
     private void PlayDespawnSFX()
     {
-        AudioManager.Instance.PlaySfx("BlackholeDespawn");
+        AudioManager.Instance.PlaySfx(despawnSfxKey);
     }
 }
