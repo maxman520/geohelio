@@ -69,6 +69,20 @@
 - 아쉬운 점: 난이도 곡선/밸런스 조정 필요, 다양한 장애물·아이템 종류 확장 여지, 플레이어 재화 및 광고를 통한 플레이어 재화 지급 미구현
 - 개선 계획: 더욱 다양한 아이템/버프 시스템, 장애물 패턴 추가, 플레이어 재화 구현
 
-## 저작권 및 사용권 정보
+## 외부 에셋 및 리소스 정보
 
--
+### 폰트
+
+- 던파 비트비트체 - https://df.nexon.com/data/font/dnfbitbitv2
+
+### 스프라이트
+
+- Yet Another Icons by Prinbles - https://prinbles.itch.io/yet-another-icons
+- Void - Environment Pack by Foozle - https://foozlecc.itch.io/void-environment-pack
+- Space by PiiiXL - https://piiixl.itch.io/space
+- 2d PixelArt Stars - https://s-a-t-u-r-n.itch.io/2d-pixelart-stars
+
+### 오디오
+
+- FREE Music Loop Pack for Game Jam and Prototype - https://tubelesshalo.itch.io/free-music-loop-pack
+- Fun Casual Sounds - https://assetstore.unity.com/packages/audio/sound-fx/fun-casual-sounds-64048?aid=1011l5f3d&pubref=chrome

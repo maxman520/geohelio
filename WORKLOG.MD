@@ -211,8 +211,6 @@
 2025-09-09 22:06 | fix | TopLeftButtons OnEnable에서 restartButton 가드 추가 | Assets/Scripts/UI/TopLeftButtons.cs
 2025-09-09 22:06 | docs | DataManager Bootstrap()에 동작 의도 주석 보강 | Assets/Scripts/Utilities/DataManager.cs
 
-<!-- COMMIT_BOOKMARK -->
-
 2025-09-09 22:20 | feat | AudioManager에 SFX 채널 풀/핸들 시스템 추가 및 음소거 연동 | Assets/Scripts/Utilities/AudioManager.cs
 2025-09-09 22:20 | refactor | 슈팅스타/블랙홀 루프 SFX를 핸들 기반 루프로 전환 | Assets/Scripts/Game/ShootingStar.cs,Assets/Scripts/Game/BlackHole.cs
 2025-09-09 23:15 | docs | 변경 사항 요약 문서 추가(2025-09-09) | CHANGES_2025-09-09.md
@@ -222,3 +220,17 @@
 2025-09-10 16:37 | docs | SfxHandle API XML 문서 주석 추가 | Assets/Scripts/Utilities/AudioManager.cs
 
 2025-09-10 16:50 | docs | BlackHole 클래스 요약 주석 갱신 | Assets/Scripts/Game/BlackHole.cs
+
+<!-- COMMIT_BOOKMARK -->
+
+2025-09-10 18:00 | docs | AdMob 인터스티셜 광고 구현 계획 추가 | ADMOB_INTERSTITIAL_PLAN.md
+
+2025-09-10 18:20 | docs | 앱 출시·AdMob 순서/체크리스트 문서 추가 | APP_RELEASE_AND_ADMOB_CHECKLIST.md
+
+2025-09-10 18:41 | docs | AdMob 인터스티셜 계획 v2(클릭 카운트 영속화) 추가 | ADMOB_INTERSTITIAL_PLAN_v2.md
+
+2025-09-10 19:06 | fix | GooglePlayServices 미설치 시 BuildPreProcessor 컴파일 오류 가드(HAS_GOOGLE_ANDROID_RESOLVER 전처리) | Assets/GoogleMobileAds/Editor/BuildPreProcessor.cs
+
+2025-09-10 23:51 | chore | Android 아이콘 에셋 추가 및 Player Settings 아이콘 설정 | ProjectSettings/ProjectSettings.asset,Assets/Sprites/App_Icons
+2025-09-11 02:31 | docs | README.md '외부 에셋 및 리소스 정보' 섹션 보강 제안(항목 메타데이터/라이선스 사본/오디오·폰트 포함) | README.md
+2025-09-11 02:37 | chore | .gitignore에 Plugins 하위 빌드 산출물/캐시 무시 패턴 추가 | .gitignore

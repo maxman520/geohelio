@@ -37,3 +37,14 @@ REFACTORING_PLAN.MD
 # Unity가 생성하는 백업 폴더(자동 생성, 배포/커밋 금지)
 /GeoHelio_BackUpThisFolder_ButDontShipItWithYourGame/
 /*_BackUpThisFolder_ButDontShipItWithYourGame/
+
+# Plugins 네이티브 빌드 산출물/캐시 무시
+/Assets/Plugins/Android/**/build/
+/Assets/Plugins/Android/**/bin/
+/Assets/Plugins/Android/**/gen/
+/Assets/Plugins/Android/**/.gradle/
+/Assets/Plugins/Android/**/.idea/
+/Assets/Plugins/Android/**/.cxx/
+/Assets/Plugins/Android/**/local.properties
+/Assets/Plugins/**/.DS_Store
+/Assets/Plugins/**/Thumbs.db
