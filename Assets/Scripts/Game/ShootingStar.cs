@@ -336,18 +336,18 @@ public class ShootingStar : MonoBehaviour
             // 충돌 시 Hurt SFX 재생
             AudioManager.Instance.PlaySfx("Hurt");
 
-            // 충돌 시 진동 재생(슈팅스타는 장애물로 간주하여 중간 강도 적용)
+            // 충돌 시 진동 재생(슈팅스타는 장애물로 간주하여 강한 진동 적용)
             try
             {
                 var vm = VibrationManager.Instance;
                 if (vm != null)
                 {
-                    vm.VibrateMedium();
+                    vm.VibrateHeavy();
                 }
             }
             catch (System.Exception ve)
             {
-                Debug.LogWarning($"[ShootingStar] 진동(중간) 재생 중 예외: {ve.Message}");
+                Debug.LogWarning($"[ShootingStar] 진동(강하게) 재생 중 예외: {ve.Message}");
             }
 
             // 동일 개체로 재충돌하지 않도록 즉시 콜라이더를 비활성화한다.

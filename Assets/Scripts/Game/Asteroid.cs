@@ -143,18 +143,18 @@ public class Asteroid : MonoBehaviour
                 // 충돌 시 Hurt SFX 재생
                 AudioManager.Instance.PlaySfx("Hurt");
 
-                // 장애물 소행성: 중간 강도의 진동
+                // 장애물 소행성: 강한 진동
                 try
                 {
                     var vm = VibrationManager.Instance;
                     if (vm != null)
                     {
-                        vm.VibrateMedium();
+                        vm.VibrateHeavy();
                     }
                 }
                 catch (Exception ve)
                 {
-                    Debug.LogWarning($"[Asteroid] 진동(중간) 재생 중 예외: {ve.Message}");
+                    Debug.LogWarning($"[Asteroid] 진동(강하게) 재생 중 예외: {ve.Message}");
                 }
             }
             else
