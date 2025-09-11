@@ -335,12 +335,11 @@ MonoBehaviour:
   trajectoryColor: {r: 1, g: 1, b: 1, a: 1}
   lineWidthWorld: 0.25
   dashWorldSize: 0.3
-  speedRange: {x: 4, y: 7}
+  speedRange: {x: 7, y: 7}
   hitCooldown: 0.5
   launchDelaySeconds: 1
   startSfxKey: ShootingStarStart
   burnSfxKey: ShootingStarBurn
-  burnSfxInterval: 2.5
 --- !u!1 &7983039202033718866
 GameObject:
   m_ObjectHideFlags: 0

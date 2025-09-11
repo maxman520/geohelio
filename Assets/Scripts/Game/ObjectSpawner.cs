@@ -115,6 +115,23 @@ public class ObjectSpawner : MonoBehaviour
         {
             Debug.LogWarning("[ObjectSpawner] 카메라를 찾지 못했습니다. 스폰 반경은 설정 값(spawnRadius)을 사용합니다.");
         }
+        else if (_camera.orthographic)
+        {
+            // 직교 카메라 기반으로 스폰 반경을 설정한다(화면 가로 절반 길이).
+            // 그런 다음 해당 반경을 기준으로 초기 개수와 최대 동시 개수를 산출한다.
+
+            float cameraHalfWidth = _camera.orthographicSize * _camera.aspect;
+            spawnRadius = cameraHalfWidth - 1f;
+            blackHoleSpawnRadius = spawnRadius - 1f;
+            // 반경 기반 파생 값 설정
+            // spawnRadius = 6 기준 initialCount 20개, maxAlive 40개가 밸런스가 적합하다고 판단.
+            // 계산하면
+            // spawnRadius = r 기준 적합한 initialCount 개수는 (5/9) * (r^2) 개.
+            // maxAlive는 (10/9) * (r^2) 개.
+            initialCount = Mathf.Max(0, Mathf.RoundToInt(5f / 9f * spawnRadius * spawnRadius));
+            maxAlive = Mathf.Max(0, initialCount * 2);
+            Debug.Log($"[ObjectSpawner] 카메라 기반 스폰 반경 적용: radius={spawnRadius:F2}, initialCount={initialCount}, maxAlive={maxAlive}");
+        }
 
         // 플레이어 중심 전환 이벤트 구독(가능 시)
         if (_player != null)
@@ -494,7 +511,11 @@ public class ObjectSpawner : MonoBehaviour
     }
 
     #region 블랙홀
-    // -------------------- 블랙홀 루프(UniTask) --------------------
+
+    public float GetBlackholeSpawnRadius()
+    {
+        return blackHoleSpawnRadius;
+    }
     private void StartBlackHoleLoop()
     {
         if (_blackHoleCts != null) return; // 이미 동작 중
@@ -592,8 +613,7 @@ public class ObjectSpawner : MonoBehaviour
         }
         if (_activeBlackHole != null) return;
 
-        _activeBlackHole = Instantiate(blackHolePrefab, pos, Quaternion.identity);
-        _activeBlackHole.transform.SetParent(transform, true);
+        _activeBlackHole = Instantiate(blackHolePrefab, pos, Quaternion.identity, gameObject.transform);
         // 2D 평면 보정
         var e = _activeBlackHole.transform.eulerAngles;
         _activeBlackHole.transform.eulerAngles = new Vector3(0f, 0f, e.z);

@@ -1,3 +1,4 @@
+using System;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
@@ -22,7 +23,7 @@ public class BlackHole : MonoBehaviour
 
     [Header("흡인(플레이어)")]
     [Tooltip("플레이어를 블랙홀 중심으로 끌어당기는 속도(단위/초)")]
-    [SerializeField] private float maxPullSpeed = 3.0f;
+    [SerializeField] private float maxPullSpeed;
     [Tooltip("디스폰 상태 판정용 애니메이터(비워두면 자동 수집)")]
     [SerializeField] private Animator animator;
     [Tooltip("디스폰 상태 태그 이름(애니메이터 상태 태그)")]
@@ -40,6 +41,7 @@ public class BlackHole : MonoBehaviour
     private PlayerController _player;
     private bool _gameOverTriggered;
     private AudioManager.SfxHandle _pullSfxHandle; // 루프 SFX 핸들
+    private ObjectSpawner _spawner;
 
     private void Awake()
     {
@@ -56,6 +58,21 @@ public class BlackHole : MonoBehaviour
     {
         // 플레이어 참조 캐시(가능 시)
         _player = FindFirstObjectByType<PlayerController>();
+        _spawner = GetComponentInParent<ObjectSpawner>();
+
+        // 스포너의 spawnRadius를 기준으로 흡인 최대 속도를 설정한다(절반 값으로 고정).
+        // 스포너가 부모에 배치되므로 상위에서 찾는다. 실패 시 2f 고정.
+        if (_spawner != null)
+        {
+            float r = _spawner.GetBlackholeSpawnRadius();
+            maxPullSpeed = Mathf.Max(2f, 2f + (1f / 4f * (float) Math.Sqrt(r)));
+            Debug.Log($"[BlackHole] spawnRadius 기반 흡인 속도 설정: maxPullSpeed={maxPullSpeed:F2} (r={r:F2})");
+        }
+        else
+        {
+            maxPullSpeed = 2f;
+            Debug.Log($"[BlackHole] _spawner가 null입니다. spawnRadius 기반 흡인 속도 설정: maxPullSpeed={maxPullSpeed:F2})");
+        }
     }
 
     private void OnEnable()
@@ -66,6 +83,8 @@ public class BlackHole : MonoBehaviour
         _fadeCts = null;
         _gameOverTriggered = false;
         StopPullSfxLoop();
+
+        
 
         if (!fadeInOnSpawn || spriteRenderers == null || spriteRenderers.Length == 0)
         {

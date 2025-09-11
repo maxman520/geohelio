@@ -233,11 +233,15 @@
 2025-09-11 02:31 | docs | README.md '외부 에셋 및 리소스 정보' 섹션 보강 제안(항목 메타데이터/라이선스 사본/오디오·폰트 포함) | README.md
 2025-09-11 02:37 | chore | .gitignore에 Plugins 하위 빌드 산출물/캐시 무시 패턴 추가 | .gitignore
 
-
 2025-09-11 16:36 | docs | AdMob 전면 광고 구현 계획서 추가 | ADMOB_INTERSTITIAL_PLAN.md
 2025-09-11 16:40 | feat | AdMob 전면 광고 관리 매니저 추가 및 클릭 3회마다 노출, 데이터/오디오 연동, UI/게임 흐름 훅 연결 | Assets/Scripts/Monetization/AdsManager.cs,Assets/Scripts/Utilities/DataManager.cs,Assets/Scripts/UI/GameOverPanel.cs,Assets/Scripts/UI/TopLeftButtons.cs,Assets/Scripts/Game/GameManager.cs
 2025-09-11 19:33 | refactor | PreloadInterstitialAsync 콜백 완료까지 실제 await하도록 최소 변경 적용 | Assets/Scripts/Utilities/AdsManager.cs
 2025-09-11 19:36 | chore | 앱 아이콘 이미지 수정 | Assets/Sprites/App_Icons
 
-<!-- COMMIT_BOOKMARK -->
 2025-09-11 19:59 | fix | 장애물 소행성·슈팅스타 충돌 시 진동을 Heavy로 변경 | Assets/Scripts/Game/Asteroid.cs,Assets/Scripts/Game/ShootingStar.cs
+
+<!-- COMMIT_BOOKMARK -->
+
+2025-09-11 20:32 | feat | 카메라 기반 spawnRadius 적용 및 initialCount/maxAlive 설정| Assets/Scripts/Game/ObjectSpawner.cs
+2025-09-11 21:02 | feat | ShootingStar 속도를 ObjectSpawner.spawnRadius 기반으로 고정(폴백 유지) | Assets/Scripts/Game/ShootingStar.cs
+2025-09-11 21:55 | docs | 블랙홀 흡인속도 조절 로직 수정 | Assets/Scripts/Game/BlackHole.cs
