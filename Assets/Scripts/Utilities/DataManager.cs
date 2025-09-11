@@ -1,7 +1,6 @@
 using System;
 using System.IO;
 using System.Text;
-using System.Threading;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
 
@@ -18,12 +17,22 @@ public class DataManager : SingletonMonoBehaviour<DataManager>
         public int bestScore = 0;
         public bool muted = false;
         public bool vibrationEnabled = true;
+        // 광고 관련(버튼 클릭 횟수 집계/쌓인 광고 수/간격/마지막 표시시각)
+        public int adRestartClickCount = 0;
+        public int adPendingInterstitials = 0;
+        public int adMinIntervalSeconds = 0;
+        public long adLastShowUnixMs = 0;
     }
 
     // 현재 설정(읽기 전용 외부 접근)
     public int BestScore { get; private set; }
     public bool Muted { get; private set; }
     public bool VibrationEnabled { get; private set; } = true;
+    // 광고 관련 읽기 전용 프로퍼티
+    public int AdRestartClickCount { get; private set; }
+    public int AdPendingInterstitials { get; private set; }
+    public int AdMinIntervalSeconds { get; private set; } = 0; // 옵션(기본 0)
+    public long AdLastShowUnixMs { get; set; }
 
     // 이벤트
     public event Action OnSettingsChanged;          // 음소거/진동 변경 시
@@ -98,7 +107,11 @@ public class DataManager : SingletonMonoBehaviour<DataManager>
             version = 1,
             bestScore = BestScore,
             muted = Muted,
-            vibrationEnabled = VibrationEnabled
+            vibrationEnabled = VibrationEnabled,
+            adRestartClickCount = AdRestartClickCount,
+            adPendingInterstitials = AdPendingInterstitials,
+            adMinIntervalSeconds = AdMinIntervalSeconds,
+            adLastShowUnixMs = AdLastShowUnixMs
         };
 
         string json = JsonUtility.ToJson(data, prettyPrint: false);
@@ -127,6 +140,11 @@ public class DataManager : SingletonMonoBehaviour<DataManager>
         BestScore = Mathf.Max(0, data.bestScore);
         Muted = data.muted;
         VibrationEnabled = data.vibrationEnabled;
+        // 광고 관련 필드 반영(누락 시 기본값 적용)
+        AdRestartClickCount = Mathf.Max(0, data.adRestartClickCount);
+        AdPendingInterstitials = Mathf.Max(0, data.adPendingInterstitials);
+        AdMinIntervalSeconds = Mathf.Max(0, data.adMinIntervalSeconds);
+        AdLastShowUnixMs = (long)Mathf.Max(0, data.adLastShowUnixMs);
     }
 
     /// <summary>
@@ -179,4 +197,33 @@ public class DataManager : SingletonMonoBehaviour<DataManager>
         // 앱 종료 직전에 마지막 저장 시도
         SaveAsync().Forget();
     }
+
+    # region Ads API
+    /// <summary>
+    /// 재시작/재도전 클릭 누계를 1 증가시키고 즉시 저장한다.
+    /// </summary>
+    public void IncrementRestartClickCount()
+    {
+        AdRestartClickCount++;
+        SaveAsync().Forget();
+    }
+
+    /// <summary>
+    /// 표시해야 할 전면 광고를 대기열에 추가한다(상한 1).
+    /// </summary>
+    public void EnqueuePendingInterstitial()
+    {
+        if (AdPendingInterstitials < 1) AdPendingInterstitials = 1;
+        SaveAsync().Forget();
+    }
+
+    /// <summary>
+    /// 대기 중인 전면 광고를 1 소모한다.
+    /// </summary>
+    public void ConsumePendingInterstitial()
+    {
+        if (AdPendingInterstitials > 0) AdPendingInterstitials--;
+        SaveAsync().Forget();
+    }
+    #endregion Ads API
 }

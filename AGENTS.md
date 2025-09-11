@@ -72,6 +72,7 @@ feat: README.md 추가
   - `[SerializeField] private` 필드: `camelCase`
 
 - 모든 스크립트는 **UTF-8 인코딩**과 **LF 줄바꿈**을 사용한다.
+- 비동기 메서드는 꼭 필요한 곳에만 작성하도록 한다.
 
 ## Game Concept
 

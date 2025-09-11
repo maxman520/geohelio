@@ -55,6 +55,7 @@
     <Compile Include="Assets\Scripts\Utilities\GameConstants.cs" />
     <Compile Include="Assets\Scripts\Game\Asteroid.cs" />
     <Compile Include="Assets\Scripts\Utilities\PooledObjectTag.cs" />
+    <Compile Include="Assets\Scripts\Utilities\AdsManager.cs" />
     <Compile Include="Assets\Scripts\Game\GameManager.cs" />
     <Compile Include="Assets\Scripts\UI\GameOverPanel.cs" />
     <Compile Include="Assets\Scripts\Game\ObjectSpawner.cs" />

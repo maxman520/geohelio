@@ -230,6 +230,12 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
         if (asteroidSpawner == null)
             asteroidSpawner = FindFirstObjectByType<ObjectSpawner>();
         asteroidSpawner?.Initialize();
+
+        // Ready 진입 시 대기 중인 전면 광고가 있으면 표시 시도
+        if (AdsManager.Instance != null)
+        {
+            AdsManager.Instance.TryShowInterstitialAsync().Forget();
+        }
     }
 
     public void StartGame()

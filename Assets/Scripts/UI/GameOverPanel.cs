@@ -1,7 +1,7 @@
-using System.Globalization;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using Cysharp.Threading.Tasks;
 
 // 게임오버 창 제어 스크립트: 점수 표시와 다시하기 버튼 처리(TextMeshPro 사용)
 public class GameOverPanel : MonoBehaviour
@@ -53,6 +53,12 @@ public class GameOverPanel : MonoBehaviour
         AudioManager.Instance.PlaySfx("OnClickBtn");
         var ui = UIManager.Instance;
         if (ui != null) ui.RequestRetry();
+
+        // 전면 광고 집계 알림(3회마다 노출 정책)
+        if (AdsManager.Instance != null)
+        {
+            AdsManager.Instance.NotifyRestartLikeClickAsync().Forget();
+        }
     }
 
     // 최고 점수 텍스트를 천 단위 구분 기호와 함께 갱신
