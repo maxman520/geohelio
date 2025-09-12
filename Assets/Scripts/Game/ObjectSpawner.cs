@@ -16,14 +16,12 @@ using Random = UnityEngine.Random;
 // 6) 게임 진행 중에는 주기적으로 스폰, 중지 시 스폰 정지
 public class ObjectSpawner : MonoBehaviour
 {
-    [Header("설정")]
+    [Header("소행성 설정")]
     [SerializeField] private GameObject asteroidPrefab;      // 소행성 프리팹
     [SerializeField] private float spawnInterval = 1.0f;     // 스폰 간격(초)
-    [SerializeField] private int maxAlive = 50;               // 최대 동시 소행성 수
-    [SerializeField] private float spawnRadius = 6f;          // 스폰 반경 기본값(카메라 미발견 시 폴백 값)
-    [SerializeField] private int initialCount = 8;            // 초기 생성 개수(Initialize 시 사용)
-    [Tooltip("기존 월드에 남아있는 소행성 제거용 태그(선택). Initialize에서 사용")]
-    [SerializeField] private string asteroidTag = "";         // 삭제/검색용 태그
+    private int _maxAlive = 50;               // 최대 동시 소행성 수
+    private float _spawnRadius = 6f;          // 스폰 반경 기본값(카메라 미발견 시 폴백 값)
+    private int _initialCount = 8;            // 초기 생성 개수(Initialize 시 사용)
 
     [Header("규칙")]
     [SerializeField] private float minSeparation = 0.5f;      // 최소 간격 0.5 유지(규칙 5)
@@ -68,14 +66,13 @@ public class ObjectSpawner : MonoBehaviour
     [Header("블랙홀")]
     [Tooltip("블랙홀 프리팹(BlackHole 컴포넌트 포함 권장)")]
     [SerializeField] private GameObject blackHolePrefab;
-    [Tooltip("블랙홀 스폰 범위 반경(월드 단위). 중심은 (0,0)")]
-    [SerializeField] private float blackHoleSpawnRadius = 6f;
     [Tooltip("블랙홀 수명(초)")]
     [SerializeField] private float blackHoleLifetimeSeconds = 5f;
     [Tooltip("블랙홀 스폰 지연 범위(초). 초기/종료 후 동일 적용")]
     [SerializeField] private Vector2 blackHoleSpawnDelayRange = new Vector2(20f, 30f);
     [Tooltip("블랙홀: 공전 원 내부 판정 여유값")]
     [SerializeField] private float blackHoleOrbitEpsilon = 0.001f;
+    private float _blackHoleSpawnRadius = 6f; // 블랙홀 스폰 범위 반경
 
     // 내부 진행 상태
     private float _timer;
@@ -96,6 +93,7 @@ public class ObjectSpawner : MonoBehaviour
     private float _cleanupAccum;
     // 블랙홀 진행 상태
     private CancellationTokenSource _blackHoleCts;
+    private CancellationTokenSource _shootingStarCts; // 슈팅스타 스케줄 루프용 CTS
     private GameObject _activeBlackHole;
 
     // 스포너 파괴 시 진행 중 애니메이션이 있더라도 자연 종료에 맡긴다(컴포넌트가 자체 처리).
@@ -105,13 +103,13 @@ public class ObjectSpawner : MonoBehaviour
     {
         // 플레이어 참조(궤도 규칙 적용 시 필요)
         _player = FindFirstObjectByType<PlayerController>();
-        if (_player == null)
-        {
-            Debug.LogWarning("[ObjectSpawner] PlayerController를 찾지 못했습니다. 궤도 규칙(4) 적용이 제한됩니다.");
-        }
+        if (_player != null)
+            _player.OnCenterToggled += OnPlayerCenterToggled;
+        else
+            Debug.LogWarning("[ObjectSpawner] PlayerController를 찾지 못했습니다.");
 
         // 메인 카메라 캐시(직교 카메라 가로 절반 길이로 반경 계산)
-        _camera = Camera.main != null ? Camera.main : FindFirstObjectByType<Camera>();
+            _camera = Camera.main != null ? Camera.main : FindFirstObjectByType<Camera>();
         if (_camera == null)
         {
             Debug.LogWarning("[ObjectSpawner] 카메라를 찾지 못했습니다. 스폰 반경은 설정 값(spawnRadius)을 사용합니다.");
@@ -122,16 +120,16 @@ public class ObjectSpawner : MonoBehaviour
             // 그런 다음 해당 반경을 기준으로 초기 개수와 최대 동시 개수를 산출한다.
 
             float cameraHalfWidth = _camera.orthographicSize * _camera.aspect;
-            spawnRadius = cameraHalfWidth - 1f;
-            blackHoleSpawnRadius = spawnRadius - 1f;
+            _spawnRadius = cameraHalfWidth - 1f;
+            _blackHoleSpawnRadius = _spawnRadius - 1f;
             // 반경 기반 파생 값 설정
             // spawnRadius = 6 기준 initialCount 20개, maxAlive 40개가 밸런스가 적합하다고 판단.
             // 계산하면
             // spawnRadius = r 기준 적합한 initialCount 개수는 (5/9) * (r^2) 개.
             // maxAlive는 (10/9) * (r^2) 개.
-            initialCount = Mathf.Max(0, Mathf.RoundToInt(5f / 9f * spawnRadius * spawnRadius));
-            maxAlive = Mathf.Max(0, initialCount * 2);
-            Debug.Log($"[ObjectSpawner] 카메라 기반 스폰 반경 적용: radius={spawnRadius:F2}, initialCount={initialCount}, maxAlive={maxAlive}");
+            _initialCount = Mathf.Max(0, Mathf.RoundToInt(5f / 9f * _spawnRadius * _spawnRadius));
+            _maxAlive = Mathf.Max(0, _initialCount * 2);
+            Debug.Log($"[ObjectSpawner] 카메라 기반 스폰 반경 적용: radius={_spawnRadius:F2}, initialCount={_initialCount}, maxAlive={_maxAlive}");
         }
 
         // 시작 신호 구독은 Initialize에서 처리한다.
@@ -139,6 +137,50 @@ public class ObjectSpawner : MonoBehaviour
         // 스폰 간격 기준값 저장(런타임 시작 시점의 인스펙터 값을 기준으로 사용)
         _baseSpawnInterval = Mathf.Max(0.0001f, spawnInterval);
         _spawnIntervalHalved = false;
+    }
+
+    private void Update()
+    {
+        if (!_running) return;
+        // 현재 일반 소행성 수에 따라 스폰 간격을 동적으로 조정한다.
+        AdjustSpawnInterval();
+        _timer += Time.deltaTime;
+        if (_timer >= spawnInterval)
+        {
+            _timer = 0f;
+            TrySpawn(ignoreOrbitRule: false);
+        }
+
+        // 장애물 스폰 타이머
+        _obstacleTimer += Time.deltaTime;
+        if (_obstacleTimer >= obstacleSpawnInterval)
+        {
+            _obstacleTimer = 0f;
+            TrySpawnObstacle();
+        }
+
+        // 슈팅스타는 비동기 루프로 스케줄링하므로 매 프레임 갱신 불필요
+
+        // 리스트 주기 정리(매 프레임 O(n) 스캔 방지)
+        _cleanupAccum += Time.deltaTime;
+        if (_cleanupAccum >= 0.5f)
+        {
+            _cleanupAccum = 0f;
+            CleanupList();
+            CleanupObstacleList();
+            CleanupShootingList();
+        }
+    }
+    private void OnDestroy()
+    {
+        if (_player != null)
+        {
+            _player.OnCenterToggled -= OnPlayerCenterToggled;
+        }
+
+        // 점수 텍스트는 외부 토큰 관리가 필요 없으므로 별도 정리 없음
+        StopBlackHoleLoop(despawn: true);
+        StopShootingStarLoop();
     }
 
 #if UNITY_EDITOR
@@ -183,9 +225,9 @@ public class ObjectSpawner : MonoBehaviour
 
         // 일반/장애물/슈팅스타 보정
         spawnInterval = ClampMinF(spawnInterval, 0.05f);
-        maxAlive = ClampMinI(maxAlive, 0);
-        spawnRadius = ClampMinF(spawnRadius, 0f);
-        initialCount = ClampMinI(initialCount, 0);
+        _maxAlive = ClampMinI(_maxAlive, 0);
+        _spawnRadius = ClampMinF(_spawnRadius, 0f);
+        _initialCount = ClampMinI(_initialCount, 0);
         minSeparation = ClampMinF(minSeparation, 0f);
         orbitEpsilon = ClampMinF(orbitEpsilon, 0f);
         despawnMargin = ClampMinF(despawnMargin, 0f);
@@ -214,70 +256,25 @@ public class ObjectSpawner : MonoBehaviour
         }
 
         // 블랙홀 관련 값 보정
-        blackHoleSpawnRadius = ClampMinF(blackHoleSpawnRadius, 0f);
+        _blackHoleSpawnRadius = ClampMinF(_blackHoleSpawnRadius, 0f);
         blackHoleLifetimeSeconds = ClampMinF(blackHoleLifetimeSeconds, 0f);
         blackHoleSpawnDelayRange = EnsureRange(blackHoleSpawnDelayRange, 0f);
         blackHoleOrbitEpsilon = ClampMinF(blackHoleOrbitEpsilon, 0f);
     }
 #endif
 
-    private void OnDestroy()
-    {
-        if (_player != null)
-        {
-            _player.OnCenterToggled -= OnPlayerCenterToggled;
-        }
-
-        // 점수 텍스트는 외부 토큰 관리가 필요 없으므로 별도 정리 없음
-        StopBlackHoleLoop(despawn: true);
-    }
-
-    // GameManager 이벤트에 의존하지 않고, 실제 회전 중심 전환(탭)에 의해만 시작되도록 한다.
-
-    private void Update()
-    {
-        if (!_running) return;
-        // 현재 일반 소행성 수에 따라 스폰 간격을 동적으로 조정한다.
-        AdjustSpawnIntervalByAliveCount();
-        _timer += Time.deltaTime;
-        if (_timer >= spawnInterval)
-        {
-            _timer = 0f;
-            TrySpawn(ignoreOrbitRule: false);
-        }
-
-        // 장애물 스폰 타이머
-        _obstacleTimer += Time.deltaTime;
-        if (_obstacleTimer >= obstacleSpawnInterval)
-        {
-            _obstacleTimer = 0f;
-            TrySpawnObstacle();
-        }
-
-        UpdateShootingStarSchedule();
-
-        // 리스트 주기 정리(매 프레임 O(n) 스캔 방지)
-        _cleanupAccum += Time.deltaTime;
-        if (_cleanupAccum >= 0.5f)
-        {
-            _cleanupAccum = 0f;
-            CleanupList();
-            CleanupObstacleList();
-            CleanupShootingList();
-        }
-    }
-
     // 일반 소행성 수가 initialCount보다 적으면 스폰 간격을 절반으로, 아니면 원래 값으로 복구한다.
-    private void AdjustSpawnIntervalByAliveCount()
+    // Update() 에서 호출.
+    private void AdjustSpawnInterval()
     {
         int alive = _spawned.Count;
-        if (alive < Mathf.Max(0, initialCount))
+        if (alive < Mathf.Max(0, _initialCount))
         {
             if (!_spawnIntervalHalved)
             {
                 spawnInterval = _baseSpawnInterval * 0.5f;
                 _spawnIntervalHalved = true;
-                Debug.Log("[ObjectSpawner] 일반 소행성 수가 기준 미만으로 감소 — 스폰 간격을 절반으로 감소");
+                Debug.Log("[ObjectSpawner] 일반 소행성 수가 기준 미만으로 감소 — 스폰 간격을 절반으로 감소 (더욱 빨리 생성)");
             }
         }
         else
@@ -292,7 +289,7 @@ public class ObjectSpawner : MonoBehaviour
     }
 
     /// <summary>
-    /// 스포너 초기화: 기존 소행성 정리 후 초기 배치를 생성하고 스폰을 시작한다.
+    /// 스포너 초기화: 기존 소행성 정리 후 초기 배치를 다시 생성한다.
     /// </summary>
     public void Initialize()
     {
@@ -300,13 +297,13 @@ public class ObjectSpawner : MonoBehaviour
         RemoveAllAsteroids();
 
         // 초기 배치 생성(규칙 4 적용: 공전 범위 제외)
-        for (int i = 0; i < Mathf.Max(0, initialCount); i++)
+        for (int i = 0; i < Mathf.Max(0, _initialCount); i++)
         {
             TrySpawn(ignoreOrbitRule: false);
         }
 
-        // 시작 신호 대기 상태로 리셋(씬 진입/리셋 후 탭으로 중심 전환 시까지 주기 스폰 보류)
-        _startSignalReceived = false;
+        // 시작 신호 대기 상태로 리셋(첫 탭으로 중심 전환 시까지 주기 스폰 보류)
+        _startSignalReceived = false; 
         _running = false; // 주기 스폰은 보류
         _timer = 0f;
         _obstacleTimer = 0f;
@@ -315,6 +312,8 @@ public class ObjectSpawner : MonoBehaviour
 
         // 블랙홀 루프 정지 및 정리
         StopBlackHoleLoop(despawn: true);
+        // 슈팅스타 루프 정지
+        StopShootingStarLoop();
 
         // 소프트 리스타트 대비: 플레이어 중심 전환 이벤트를 다시 구독하여
         // 다음 라운드의 첫 신호를 받을 수 있도록 재설정한다(중복 방지 위해 선해제 후 재구독).
@@ -329,76 +328,87 @@ public class ObjectSpawner : MonoBehaviour
 
         if (_player != null)
         {
-            _player.OnCenterToggled -= OnPlayerCenterToggled; // 미구독이어도 예외 없음
+            _player.OnCenterToggled -= OnPlayerCenterToggled;
             _player.OnCenterToggled += OnPlayerCenterToggled;
         }
     }
 
-    // 시작 신호 처리: 주기 스폰 시작(Initialize에서 이미 초기 배치 완료)
-    private void HandleStartSignal()
+    // 플레이어 중심 전환 이벤트 처리
+    private void OnPlayerCenterToggled(bool isSun)
     {
-        if (_startSignalReceived) return;
+        if (_startSignalReceived) return; // 이미 시작 신호를 받았던 상태(게임이 시작됨)라면 return
         _startSignalReceived = true;
         // 스폰 시작
         _running = true;
         _timer = 0f;
         Debug.Log("[ObjectSpawner] 시작 신호 감지: 주기 스폰 시작");
-    }
-
-    // 플레이어 중심 전환 이벤트 처리(첫 신호만 처리 후 구독 해제)
-    private void OnPlayerCenterToggled(bool isSun)
-    {
-        if (_startSignalReceived) return;
-        HandleStartSignal();
-        // 첫 생성은 초기 지연 + 랜덤 추가 지연 이후
+        // 첫 생성은 초기 지연 + 랜덤 추가 지연 이후(비동기 루프 시작)
         float extra = Random.Range(shootingStarRandomDelayRange.x, shootingStarRandomDelayRange.y);
-        _shootingStarNextAttemptTime = Time.time + shootingStarInitialDelay + Mathf.Max(0f, extra);
-        // 첫 신호 처리 후 더 이상 필요 없으므로 구독 해제
-        if (_player != null)
-        {
-            _player.OnCenterToggled -= OnPlayerCenterToggled;
-        }
+        float initialDelay = shootingStarInitialDelay + Mathf.Max(0f, extra);
+
+        // 슈팅스타 루프 시작
+        StartShootingStarLoop(initialDelay);
 
         // 블랙홀 루프 시작(초기 20~30초 랜덤 지연 후 스폰)
         StartBlackHoleLoop();
     }
+
+    /// <summary>
+    /// 스폰 중지(게임 일시정지/종료 등).
+    /// </summary>
+    public void Stop()
+    {
+        _running = false;
+        Debug.Log("[ObjectSpawner] 스폰 중지");
+
+        // 블랙홀 루프 중지 및 디스폰
+        StopBlackHoleLoop(despawn: true);
+        // 슈팅스타 루프 중지
+        StopShootingStarLoop();
+    }
     #endregion // 일반 공통
 
     #region 슈팅스타
-    private void UpdateShootingStarSchedule()
+    // 카메라 뷰 사각형과 (뷰+마진) 사각형 사이의 띠 영역 내 임의의 점을 선택
+    // 반환: 성공 시 true, pos는 월드 좌표
+    private bool GetShootingStarSpawnPoint(out Vector3 pos)
     {
-        if (_shootingStarNextAttemptTime < 0f) return; // 아직 시작 신호 전
-        if (Time.time < _shootingStarNextAttemptTime) return;
+        pos = Vector3.zero;
+        if (_camera == null || !_camera.orthographic) return false;
 
-        // 최대 개수 도달 시 쿨타임 설정(즉시 생성 금지)
-        if (_spawnedShootingStars.Count >= shootingStarMaxAlive)
-        {
-            float extra = Random.Range(shootingStarRandomDelayRange.x, shootingStarRandomDelayRange.y);
-            _shootingStarNextAttemptTime = Time.time + shootingStarPostMaxCooldown + Mathf.Max(0f, extra);
-            return;
-        }
+        var cp = _camera.transform.position;
+        float hi = _camera.orthographicSize;                  // 안 쪽 half-height
+        float wi = _camera.orthographicSize * _camera.aspect; // 안 쪽 half-width
+        float margin = Mathf.Max(0f, despawnMargin);
+        float ho = hi + margin; // 바깥 쪽 half-height. margin을 더해서 카메라 영역보다 조금 더 큰 외부 사각형을 정의
+        float wo = wi + margin; // 바깥 쪽 half-width
 
-        // 생성 시도
-        bool spawned = TrySpawnShootingStar();
-        if (spawned)
+        const int kMaxTries = 64; // 후보 고르기를 64번 반복.
+        for (int i = 0; i < kMaxTries; i++)
         {
-            // 스폰 직후 최대치에 도달하면 쿨타임 진입
-            if (_spawnedShootingStars.Count >= shootingStarMaxAlive)
+            float x = Random.Range(cp.x - wo, cp.x + wo);
+            float y = Random.Range(cp.y - ho, cp.y + ho);
+            float dx = Mathf.Abs(x - cp.x);
+            float dy = Mathf.Abs(y - cp.y);
+            bool insideOuter = (dx <= wo && dy <= ho);
+            bool outsideInner = (dx > wi || dy > hi);
+            if (insideOuter && outsideInner) // 후보 고르기에 성공하면 pos를 설정 후 true를 return.
             {
-                float extra = Random.Range(shootingStarRandomDelayRange.x, shootingStarRandomDelayRange.y);
-                _shootingStarNextAttemptTime = Time.time + shootingStarPostMaxCooldown + Mathf.Max(0f, extra);
-            }
-            else
-            {
-                float extra = Random.Range(shootingStarRandomDelayRange.x, shootingStarRandomDelayRange.y);
-                _shootingStarNextAttemptTime = Time.time + Mathf.Max(0f, extra);
+                pos = new Vector3(x, y, 0f);
+                return true;
             }
         }
-        else
+
+        // 드물게 실패 시, 외곽 테두리 중 하나에서 선택
+        int edge = Random.Range(0, 4); // 0 ~ 3
+        switch (edge)
         {
-            // 실패 시 짧게 재시도
-            _shootingStarNextAttemptTime = Time.time + 0.5f;
+            case 0: pos = new Vector3(Random.Range(cp.x - wo, cp.x + wo), cp.y + ho, 0f); break; // 위
+            case 1: pos = new Vector3(Random.Range(cp.x - wo, cp.x + wo), cp.y - ho, 0f); break; // 아래
+            case 2: pos = new Vector3(cp.x - wo, Random.Range(cp.y - ho, cp.y + ho), 0f); break; // 왼쪽
+            default: pos = new Vector3(cp.x + wo, Random.Range(cp.y - ho, cp.y + ho), 0f); break; // 오른쪽
         }
+        return true;
     }
 
     private bool TrySpawnShootingStar()
@@ -410,7 +420,7 @@ public class ObjectSpawner : MonoBehaviour
         // 직교 카메라라면: 카메라 뷰 사각형과 (뷰+마진) 사각형 사이의 띠 영역에서 시작 지점을 선택
         if (_camera != null && _camera.orthographic)
         {
-            if (!TryGetPointInCameraBand(out Vector3 start)) return false;
+            if (!GetShootingStarSpawnPoint(out Vector3 start)) return false;
             // 도착 지점은 (0,0) 기준 거울 위치로 설정
             Vector3 end = new Vector3(-start.x, -start.y, start.z);
 
@@ -445,6 +455,71 @@ public class ObjectSpawner : MonoBehaviour
         float spdFb = Random.Range(Mathf.Min(shootingStarSpeedRange.x, shootingStarSpeedRange.y), Mathf.Max(shootingStarSpeedRange.x, shootingStarSpeedRange.y));
         SpawnShootingAt(startFallback, endFallback, passPointFb, spdFb);
         return true;
+    }
+
+    private void StartShootingStarLoop(float initialDelaySeconds)
+    {
+        if (_shootingStarCts != null) return; // 이미 동작 중
+        _shootingStarCts = new CancellationTokenSource();
+        RunShootingStarLoopAsync(_shootingStarCts.Token, Mathf.Max(0f, initialDelaySeconds)).Forget();
+        Debug.Log("[ObjectSpawner] 슈팅스타 스케줄 루프 시작");
+    }
+
+    private void StopShootingStarLoop()
+    {
+        if (_shootingStarCts != null)
+        {
+            _shootingStarCts.Cancel();
+            _shootingStarCts.Dispose();
+            _shootingStarCts = null;
+        }
+        _shootingStarNextAttemptTime = -1f; // 타임스탬프 리셋(구 로직과의 호환)
+    }
+
+    private async UniTaskVoid RunShootingStarLoopAsync(CancellationToken ct, float initialDelaySeconds)
+    {
+        // 초기 지연 대기
+        if (initialDelaySeconds > 0f)
+        {
+            try { await UniTask.Delay(TimeSpan.FromSeconds(initialDelaySeconds), cancellationToken: ct); }
+            catch (OperationCanceledException) { return; }
+        }
+
+        while (!ct.IsCancellationRequested)
+        {
+            CleanupShootingList();
+            // 최대 동시 개수 도달 시 쿨다운 진입
+            if (_spawnedShootingStars.Count >= shootingStarMaxAlive)
+            {
+                float extraCd = Random.Range(shootingStarRandomDelayRange.x, shootingStarRandomDelayRange.y);
+                float cd = shootingStarPostMaxCooldown + Mathf.Max(0f, extraCd);
+                try { await UniTask.Delay(TimeSpan.FromSeconds(cd), cancellationToken: ct); }
+                catch (OperationCanceledException) { break; }
+                continue;
+            }
+
+            bool spawned = TrySpawnShootingStar();
+            float wait;
+            if (spawned)
+            {
+                if (_spawnedShootingStars.Count >= shootingStarMaxAlive)
+                {
+                    float extraCd = Random.Range(shootingStarRandomDelayRange.x, shootingStarRandomDelayRange.y);
+                    wait = shootingStarPostMaxCooldown + Mathf.Max(0f, extraCd);
+                }
+                else
+                {
+                    wait = Mathf.Max(0f, Random.Range(shootingStarRandomDelayRange.x, shootingStarRandomDelayRange.y));
+                }
+            }
+            else
+            {
+                wait = 0.5f; // 실패 시 짧게 재시도
+            }
+
+            try { await UniTask.Delay(TimeSpan.FromSeconds(wait), cancellationToken: ct); }
+            catch (OperationCanceledException) { break; }
+        }
     }
     
     // 슈팅스타 경유점 계산: 경로 중점(u=0.5)에서 플레이어 축과 정렬된 점을 반환
@@ -484,38 +559,13 @@ public class ObjectSpawner : MonoBehaviour
         star.Initialize(this);
         star.Launch(start, end, passPoint, speed);
     }
-    #endregion // 슈팅스타
-
-    /// <summary>
-    /// 외부에서 수동으로 스폰을 시작할 때 사용
-    /// </summary>
-    public void Begin()
-    {
-        _running = true; // 수동 시작: 스폰 시작
-        _timer = 0f;
-        Debug.Log("[ObjectSpawner] 스폰 시작");
-
-        // 수동 시작 시에도 블랙홀 루프를 함께 시작
-        StartBlackHoleLoop();
-    }
-
-    /// <summary>
-    /// 스폰 중지(게임 일시정지/종료 등).
-    /// </summary>
-    public void Stop()
-    {
-        _running = false;
-        Debug.Log("[ObjectSpawner] 스폰 중지");
-
-        // 블랙홀 루프 중지 및 디스폰
-        StopBlackHoleLoop(despawn: true);
-    }
+    #endregion 슈팅스타
 
     #region 블랙홀
 
     public float GetBlackholeSpawnRadius()
     {
-        return blackHoleSpawnRadius;
+        return _blackHoleSpawnRadius;
     }
     private void StartBlackHoleLoop()
     {
@@ -586,7 +636,7 @@ public class ObjectSpawner : MonoBehaviour
     private bool TryGetBlackHoleSpawnPosition(out Vector3 pos)
     {
         // (0,0) 중심, 반경 = blackHoleSpawnRadius 내부 균등 샘플링
-        Vector2 r = Random.insideUnitCircle * Mathf.Max(0f, blackHoleSpawnRadius);
+        Vector2 r = Random.insideUnitCircle * Mathf.Max(0f, _blackHoleSpawnRadius);
         pos = new Vector3(r.x, r.y, 0f);
 
         // 플레이어 공전 원 내부 금지(현재 중심 기준)
@@ -708,7 +758,7 @@ public class ObjectSpawner : MonoBehaviour
     {
         if (asteroidPrefab == null) return;
         CleanupList();
-        if (_spawned.Count >= maxAlive) return;
+        if (_spawned.Count >= _maxAlive) return;
 
         // 유효 위치 탐색(최대 시도 횟수 제한)
         const int kMaxTries = 24;
@@ -746,47 +796,6 @@ public class ObjectSpawner : MonoBehaviour
 
     #endregion // 장애물 소행성
 
-    // 카메라 뷰 사각형과 (뷰+마진) 사각형 사이의 띠 영역 내 임의의 점을 선택(직교 카메라 전용)
-    // 반환: 성공 시 true, pos는 월드 좌표
-    private bool TryGetPointInCameraBand(out Vector3 pos)
-    {
-        pos = Vector3.zero;
-        if (_camera == null || !_camera.orthographic) return false;
-
-        var cp = _camera.transform.position;
-        float hi = _camera.orthographicSize;                  // inner half-height
-        float wi = _camera.orthographicSize * _camera.aspect; // inner half-width
-        float margin = Mathf.Max(0f, despawnMargin);
-        float ho = hi + margin; // outer half-height
-        float wo = wi + margin; // outer half-width
-
-        const int kMaxTries = 64;
-        for (int i = 0; i < kMaxTries; i++)
-        {
-            float x = Random.Range(cp.x - wo, cp.x + wo);
-            float y = Random.Range(cp.y - ho, cp.y + ho);
-            float dx = Mathf.Abs(x - cp.x);
-            float dy = Mathf.Abs(y - cp.y);
-            bool insideOuter = (dx <= wo && dy <= ho);
-            bool outsideInner = (dx > wi || dy > hi);
-            if (insideOuter && outsideInner)
-            {
-                pos = new Vector3(x, y, 0f);
-                return true;
-            }
-        }
-
-        // 드물게 실패 시, 외곽 테두리 중 하나에서 선택
-        int edge = Random.Range(0, 4);
-        switch (edge)
-        {
-            case 0: pos = new Vector3(Random.Range(cp.x - wo, cp.x + wo), cp.y + ho, 0f); break; // top
-            case 1: pos = new Vector3(Random.Range(cp.x - wo, cp.x + wo), cp.y - ho, 0f); break; // bottom
-            case 2: pos = new Vector3(cp.x - wo, Random.Range(cp.y - ho, cp.y + ho), 0f); break; // left
-            default: pos = new Vector3(cp.x + wo, Random.Range(cp.y - ho, cp.y + ho), 0f); break; // right
-        }
-        return true;
-    }
 
     private bool TryGetObstacleSpawnPosition(out Vector3 pos)
     {
@@ -895,7 +904,7 @@ public class ObjectSpawner : MonoBehaviour
             return _camera.orthographicSize * _camera.aspect;
         }
         // 폴백: 설정된 spawnRadius 사용(원근 카메라 또는 미발견 시)
-        return spawnRadius;
+        return _spawnRadius;
     }
 
     // 외부 접근용: 스폰 반경(월드 단위) 반환
@@ -1071,15 +1080,6 @@ public class ObjectSpawner : MonoBehaviour
     // 모든 소행성 제거(태그 기반 월드 정리 + 풀/목록 정리)
     private void RemoveAllAsteroids()
     {
-        // 태그가 지정되었다면 해당 태그의 오브젝트를 먼저 제거
-        if (!string.IsNullOrEmpty(asteroidTag))
-        {
-            var tagged = GameObject.FindGameObjectsWithTag(asteroidTag);
-            foreach (var go in tagged)
-            {
-                if (go != null) Destroy(go);
-            }
-        }
 
         // 풀/목록에 등록된 오브젝트 정리 후 풀에 반환
         CleanupList();
@@ -1200,7 +1200,7 @@ public class ObjectSpawner : MonoBehaviour
         // 블랙홀 스폰 범위(월드 원점 기준, 직렬화 반경)
         // 블랙홀 스폰 반경(항상 표시, 파란색 고정)
         Gizmos.color = Color.blue;
-        Gizmos.DrawWireSphere(Vector3.zero, Mathf.Max(0f, blackHoleSpawnRadius));
+        Gizmos.DrawWireSphere(Vector3.zero, Mathf.Max(0f, _blackHoleSpawnRadius));
     }
 
     // 에디터/플레이 공통: 기즈모 반경 계산을 안정화
@@ -1237,15 +1237,12 @@ public class ObjectSpawner : MonoBehaviour
             // 에디터/런타임 환경에 따라 접근 실패 가능 — 폴백 사용
         }
 
-        return spawnRadius;
+        return _spawnRadius;
     }
 
     // 기즈모용 디스폰 경계 계산(카메라 중심 + 반경 + 마진)
     private bool TryGetGizmoDespawnCircle(out Vector3 center, out float radius)
     {
-        center = Vector3.zero;
-        radius = 0f;
-
         Camera cam = null;
         if (Application.isPlaying)
         {

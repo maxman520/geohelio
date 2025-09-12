@@ -256,7 +256,12 @@
 2025-09-12 19:26 | refactor | BlackHole 페이드 취소 로직 공통화(CancelFade 추가, OnEnable/OnDisable 적용) | Assets/Scripts/Game/BlackHole.cs
 2025-09-12 19:31 | chore | .gitignore에 IOS_VIBRATION_PLAN.md 추가 | .gitignore
 
-<!-- COMMIT_BOOKMARK -->
 2025-09-12 21:25 | docs | ObjectSpawner 코드 검토 요약 추가 | REVIEW_ObjectSpawner.md
 2025-09-12 21:38 | refactor | ObjectSpawner 간소화 — 이벤트 구독 정리, 풀 키 참조로 전환, 중복 헬퍼 추출, 리스트 주기 정리 및 OnValidate 보정 간소화 | Assets/Scripts/Game/ObjectSpawner.cs,Assets/Scripts/Utilities/PooledObjectTag.cs
 2025-09-12 21:40 | refactor | ShootingStar SFX 키를 상수로 전환하고 불필요한 참조(Rigidbody2D/Animator, 직렬화 SFX 키) 제거 | Assets/Scripts/Game/ShootingStar.cs
+
+2025-09-12 22:44 | refactor | 슈팅스타 스케줄링을 UniTask Delay 기반 루프로 전환(블랙홀과 동일 패턴) 및 루프 시작/정지 API 추가 | Assets/Scripts/Game/ObjectSpawner.cs
+2025-09-12 22:37 | refactor | ObjectSpawner 메소드 위치 정리(#region 기준 재배치: Begin/Stop를 일반 공통으로, TryGetPointInCameraBand를 슈팅스타 영역으로 이동) | Assets/Scripts/Game/ObjectSpawner.cs
+2025-09-12 23:38 | refactor | ObjectSpawner 직렬화 필드 일부를 내부 상태 필드로 전환하고 반경/카운트 필드 접두어 통일, 플레이어 중심 전환 이벤트 구독 추가 및 태그 기반 정리 제거 | Assets/Scripts/Game/ObjectSpawner.cs
+
+<!-- COMMIT_BOOKMARK -->

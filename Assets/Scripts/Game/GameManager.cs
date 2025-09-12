@@ -24,7 +24,7 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
 
     [Header("참조")]
     [SerializeField] private PlayerController player; // 플레이어 컨트롤러 참조
-    [SerializeField] private ObjectSpawner asteroidSpawner; // 소행성/장애물 스포너
+    [SerializeField] private ObjectSpawner objectSpawner; // 오브젝트 스포너
 
     [Header("설정")]
     [Tooltip("게임 시작 시 자동으로 Ready 상태로 전환할지 여부")]
@@ -184,9 +184,9 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
             player.OnCenterToggled += OnPlayerCenterToggled;
         }
 
-        if (asteroidSpawner == null)
+        if (objectSpawner == null)
         {
-            asteroidSpawner = FindFirstObjectByType<ObjectSpawner>();
+            objectSpawner = FindFirstObjectByType<ObjectSpawner>();
         }
     }
 
@@ -227,9 +227,9 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
         }
 
         // 스포너 초기화(초기 배치 생성 + 스폰 시작)
-        if (asteroidSpawner == null)
-            asteroidSpawner = FindFirstObjectByType<ObjectSpawner>();
-        asteroidSpawner?.Initialize();
+        if (objectSpawner == null)
+            objectSpawner = FindFirstObjectByType<ObjectSpawner>();
+        objectSpawner?.Initialize();
 
         // Ready 진입 시 대기 중인 전면 광고가 있으면 표시 시도
         if (AdsManager.Instance != null)
@@ -298,9 +298,9 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
         }
 
         // 스폰 중지
-        if (asteroidSpawner == null)
-            asteroidSpawner = FindFirstObjectByType<ObjectSpawner>();
-        asteroidSpawner?.Stop();
+        if (objectSpawner == null)
+            objectSpawner = FindFirstObjectByType<ObjectSpawner>();
+        objectSpawner?.Stop();
 
         // 결과 표시(UI Manager 연동)
         if (UIManager.Instance != null)
@@ -501,13 +501,13 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
         if (centerTr == null) return;
 
         // 스폰 반경 가져오기(가능하면 스포너에서, 없으면 카메라로 계산)
-        if (asteroidSpawner == null)
-            asteroidSpawner = FindFirstObjectByType<ObjectSpawner>();
+        if (objectSpawner == null)
+            objectSpawner = FindFirstObjectByType<ObjectSpawner>();
 
         float baseRadius = 0f;
-        if (asteroidSpawner != null)
+        if (objectSpawner != null)
         {
-            baseRadius = asteroidSpawner.GetSpawnRadius();
+            baseRadius = objectSpawner.GetSpawnRadius();
         }
         else
         {
