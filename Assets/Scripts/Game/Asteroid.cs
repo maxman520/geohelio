@@ -14,7 +14,6 @@ public class Asteroid : MonoBehaviour
     [Header("참조")]
     [SerializeField] private Animator animator;
     [SerializeField] private Collider2D col;
-    [SerializeField] private Rigidbody2D rb2d;
     [Tooltip("알파 페이드 인을 적용할 스프라이트 렌더러들. 비워두면 자식에서 자동 수집")]
     [SerializeField] private SpriteRenderer[] spriteRenderers;
 
@@ -52,7 +51,6 @@ public class Asteroid : MonoBehaviour
     {
         if (animator == null) animator = GetComponentInChildren<Animator>();
         if (col == null) col = GetComponent<Collider2D>();
-        if (rb2d == null) rb2d = GetComponent<Rigidbody2D>();
         if (spriteRenderers == null || spriteRenderers.Length == 0)
             spriteRenderers = GetComponentsInChildren<SpriteRenderer>(includeInactive: true);
     }
@@ -121,7 +119,6 @@ public class Asteroid : MonoBehaviour
     {
         _exploding = false;
         if (col != null) col.enabled = true;
-        if (rb2d != null) rb2d.angularVelocity = 0f; // 초기화
         ResetAnimatorState();
 
         // 스폰 시 페이드 인 처리

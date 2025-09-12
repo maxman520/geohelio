@@ -614,9 +614,6 @@ public class ObjectSpawner : MonoBehaviour
         if (_activeBlackHole != null) return;
 
         _activeBlackHole = Instantiate(blackHolePrefab, pos, Quaternion.identity, gameObject.transform);
-        // 2D 평면 보정
-        var e = _activeBlackHole.transform.eulerAngles;
-        _activeBlackHole.transform.eulerAngles = new Vector3(0f, 0f, e.z);
     }
 
     private void DespawnBlackHoleNow()

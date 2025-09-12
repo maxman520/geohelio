@@ -21,6 +21,7 @@
 
 # 문서(로컬 계획서) 무시
 REFACTORING_PLAN.MD
+IOS_VIBRATION_PLAN.md
 
 # Ignore all files under Assets/Audio except .meta files
 /Assets/Audio/**

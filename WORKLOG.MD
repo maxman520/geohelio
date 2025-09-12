@@ -247,8 +247,13 @@
 2025-09-12 16:42 | feat | 에디터 스크린샷 캡처 유틸 추가(게임 뷰 해상도 기준, 프로젝트 루트 저장) | Assets/Editor/ScreenshotTool.cs
 2025-09-12 17:50 | docs | README에 유튜브 영상 링크 추가 | README.md
 
-<!-- COMMIT_BOOKMARK -->
-
 2025-09-12 18:08 | feat | SfxCatalog 키를 GameConstants.SFX 상수로 추가 | Assets/Scripts/Utilities/GameConstants.cs,Assets/Audio/SfxCatalog.asset
 2025-09-12 18:36 | chore | Asteroid Explode 애니메이션에 태그 추가(Explode) | Assets/Animation/\_Object/Explode.anim,Assets/Animation/\_Object/Asteroid_01.controller
 2025-09-12 18:46 | refactor | Asteroid 공통화(애니메이터 리셋/페이드 취소) 및 SFX 키 상수화, 드리프트 샘플 축소 | Assets/Scripts/Game/Asteroid.cs
+
+<!-- COMMIT_BOOKMARK -->
+
+2025-09-12 19:07 | fix | BlackHole SFX 키 상수화, centerTr null 가드 추가, 로그 타이포 수정 | Assets/Scripts/Game/BlackHole.cs
+2025-09-12 19:12 | refactor | Asteroid에서 Rigidbody2D 참조 제거 | Assets/Scripts/Game/Asteroid.cs
+2025-09-12 19:26 | refactor | BlackHole 페이드 취소 로직 공통화(CancelFade 추가, OnEnable/OnDisable 적용) | Assets/Scripts/Game/BlackHole.cs
+2025-09-12 19:31 | chore | .gitignore에 IOS_VIBRATION_PLAN.md 추가 | .gitignore

@@ -14,8 +14,6 @@ using UnityEngine;
 public class BlackHole : MonoBehaviour
 {
     [Header("스폰 이펙트")]
-    [Tooltip("스폰 시 알파 0→1로 서서히 나타나기")]
-    [SerializeField] private bool fadeInOnSpawn = true;
     [Tooltip("스폰 페이드 인 시간(초)")]
     [SerializeField] private float fadeInDuration = 0.25f;
     [Tooltip("알파 페이드 인을 적용할 스프라이트 렌더러들. 비워두면 자식에서 자동 수집")]
@@ -26,16 +24,11 @@ public class BlackHole : MonoBehaviour
     [SerializeField] private float maxPullSpeed;
     [Tooltip("디스폰 상태 판정용 애니메이터(비워두면 자동 수집)")]
     [SerializeField] private Animator animator;
-    [Tooltip("디스폰 상태 태그 이름(애니메이터 상태 태그)")]
-    [SerializeField] private string despawnStateTag = GameConstants.Anim.BlackHoleDespawnStateTag;
+    private string _despawnStateTag = GameConstants.Anim.BlackHoleDespawnStateTag; // 디스폰 상태 태그 이름(애니메이터 상태 태그)
 
-    [Header("SFX")]
-    [Tooltip("흡인 중 반복 재생할 SFX 키")]
-    [SerializeField] private string pullSfxKey = "BlackholePull";
-    [Tooltip("디스폰 진입 시 1회 재생할 SFX 키")]
-    [SerializeField] private string despawnSfxKey = "BlackholeDespawn";
-    [Tooltip("흡인 SFX 반복 재생 간격(초)")]
-    [SerializeField] private float pullSfxInterval = 1.0f;
+    // SFX 키
+    private string _pullSfxKey = GameConstants.SFX.BlackholePull;
+    private string _despawnSfxKey = GameConstants.SFX.BlackholeDespawn;
 
     private CancellationTokenSource _fadeCts;
     private PlayerController _player;
@@ -58,7 +51,8 @@ public class BlackHole : MonoBehaviour
     {
         // 플레이어 참조 캐시(가능 시)
         _player = FindFirstObjectByType<PlayerController>();
-        _spawner = GetComponentInParent<ObjectSpawner>();
+        if (_spawner == null)
+            _spawner = GetComponentInParent<ObjectSpawner>();
 
         // 스포너의 spawnRadius를 기준으로 흡인 최대 속도를 설정한다(절반 값으로 고정).
         // 스포너가 부모에 배치되므로 상위에서 찾는다. 실패 시 2f 고정.
@@ -71,22 +65,18 @@ public class BlackHole : MonoBehaviour
         else
         {
             maxPullSpeed = 2f;
-            Debug.Log($"[BlackHole] _spawner가 null입니다. spawnRadius 기반 흡인 속도 설정: maxPullSpeed={maxPullSpeed:F2})");
+            Debug.Log($"[BlackHole] _spawner가 null입니다. spawnRadius 기반 흡인 속도 설정: maxPullSpeed={maxPullSpeed:F2}");
         }
     }
 
     private void OnEnable()
     {
         // 기존 페이드 작업 정리 후 새 작업 준비
-        _fadeCts?.Cancel();
-        _fadeCts?.Dispose();
-        _fadeCts = null;
+        CancelFade();
         _gameOverTriggered = false;
         StopPullSfxLoop();
 
-        
-
-        if (!fadeInOnSpawn || spriteRenderers == null || spriteRenderers.Length == 0)
+        if (spriteRenderers == null || spriteRenderers.Length == 0)
         {
             SetAlpha(1f);
             return;
@@ -95,16 +85,6 @@ public class BlackHole : MonoBehaviour
         _fadeCts = new CancellationTokenSource();
         SetAlpha(0f);
         FadeInAsync(_fadeCts.Token).Forget();
-    }
-
-    private void OnDisable()
-    {
-        // 페이드 작업 취소 및 알파 복구
-        _fadeCts?.Cancel();
-        _fadeCts?.Dispose();
-        _fadeCts = null;
-        SetAlpha(1f);
-        StopPullSfxLoop();
     }
 
     private void Update()
@@ -131,6 +111,7 @@ public class BlackHole : MonoBehaviour
         }
 
         var centerTr = _player.CurrentCenter;
+        if (centerTr == null) { StopPullSfxLoop(); return; }
         Vector3 p = centerTr.position; // 플레이어의 위치
         Vector3 b = transform.position; // 블랙홀의 위치
         Vector3 v = b - p; v.z = 0f;
@@ -144,6 +125,14 @@ public class BlackHole : MonoBehaviour
         Vector3 delta = v.normalized * Mathf.Min(step, d);
         centerTr.position = p + delta;
         EnsurePullSfxLoop();
+    }
+
+    private void OnDisable()
+    {
+        // 페이드 작업 취소 및 알파 복구
+        CancelFade();
+        SetAlpha(1f);
+        StopPullSfxLoop();
     }
 
     private void OnTriggerEnter2D(Collider2D other)
@@ -169,13 +158,7 @@ public class BlackHole : MonoBehaviour
         // 디스폰 중에는 게임오버 판정을 수행하지 않음
         if (IsDespawning()) return;
 
-        if (_player == null)
-        {
-            _player = FindFirstObjectByType<PlayerController>();
-            if (_player == null) return;
-        }
-
-        var centerTr = _player.CurrentCenter;
+        var centerTr = _player?.CurrentCenter;
         if (centerTr == null || other == null) return;
 
         var t = other.transform;
@@ -226,24 +209,32 @@ public class BlackHole : MonoBehaviour
     {
         if (fadeInDuration < 0f) fadeInDuration = 0f;
         if (maxPullSpeed < 0f) maxPullSpeed = 0f;
-        if (pullSfxInterval < 0.05f) pullSfxInterval = 0.05f;
+    }
+
+    // 진행 중인 페이드 작업 취소/정리
+    private void CancelFade()
+    {
+        if (_fadeCts == null) return;
+        try { _fadeCts.Cancel(); } catch { }
+        try { _fadeCts.Dispose(); } catch { }
+        _fadeCts = null;
     }
 
     // 현재 애니메이터가 디스폰 상태(또는 그 전이)인지 확인
     private bool IsDespawning()
     {
-        if (animator == null) return false;
-        string tag = string.IsNullOrEmpty(despawnStateTag) ? GameConstants.Anim.BlackHoleDespawnStateTag : despawnStateTag;
-        for (int i = 0; i < animator.layerCount; i++)
+        if (animator == null)
+            return false;
+        if (animator.IsInTransition(0))
         {
-            if (animator.IsInTransition(i))
-            {
-                var next = animator.GetNextAnimatorStateInfo(i);
-                if (next.IsTag(tag)) return true;
-            }
-            var st = animator.GetCurrentAnimatorStateInfo(i);
-            if (st.IsTag(tag)) return true;
+            var next = animator.GetNextAnimatorStateInfo(0);
+            if (next.IsTag(_despawnStateTag))
+                return true;
         }
+        
+        if (animator.GetCurrentAnimatorStateInfo(0).IsTag(_despawnStateTag))
+            return true;
+
         return false;
     }
 
@@ -253,9 +244,9 @@ public class BlackHole : MonoBehaviour
         if (_pullSfxHandle != null) return;
         try
         {
-            if (!string.IsNullOrEmpty(pullSfxKey) && AudioManager.Instance != null)
+            if (!string.IsNullOrEmpty(_pullSfxKey) && AudioManager.Instance != null)
             {
-                _pullSfxHandle = AudioManager.Instance.PlayLoopAttached(pullSfxKey, transform);
+                _pullSfxHandle = AudioManager.Instance.PlayLoopAttached(_pullSfxKey, transform);
             }
         }
         catch (System.Exception e)
@@ -274,6 +265,6 @@ public class BlackHole : MonoBehaviour
     // 애니메이션에서 호출. SFX 연출용 메소드
     private void PlayDespawnSFX()
     {
-        AudioManager.Instance.PlaySfx(despawnSfxKey);
+        AudioManager.Instance.PlaySfx(_despawnSfxKey);
     }
 }
