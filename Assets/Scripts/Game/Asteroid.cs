@@ -19,14 +19,10 @@ public class Asteroid : MonoBehaviour
     [SerializeField] private SpriteRenderer[] spriteRenderers;
 
     [Header("설정")]
-    [SerializeField] private string explodeTrigger = GameConstants.Anim.ExplodeTrigger;
-    [SerializeField] private string explodeStateTag = GameConstants.Anim.ExplodeStateTag;
     [Tooltip("애니메이터 상태 태그가 없을 때 대체로 기다릴 폭발 시간(초)")]
     [SerializeField] private float fallbackExplodeDuration = 0.6f;
 
     [Header("스폰 이펙트")]
-    [Tooltip("스폰 시 알파 0→1로 서서히 나타나기")]
-    [SerializeField] private bool fadeInOnSpawn = true;
     [Tooltip("스폰 페이드 인 시간(초)")]
     [SerializeField] private float fadeInDuration = 0.25f;
 
@@ -34,11 +30,12 @@ public class Asteroid : MonoBehaviour
     [Tooltip("장애물 소행성 여부(점수 미지급, 플레이어 Hurt 연출)")]
     [SerializeField] private bool isObstacle = false;
 
-    [Header("부유감(드리프트)")]
-    [Tooltip("스폰 후 무작위 방향으로 천천히 이동(부유감)")]
-    [SerializeField] private bool driftOnSpawn = true;
-    [Tooltip("드리프트 속도 범위(세계 좌표, 단위/초)")]
+    [Header("부유감")]
+    [Tooltip("부유 속도 범위(월드 좌표, 단위/초)")]
     [SerializeField] private Vector2 driftSpeedRange = new Vector2(0.1f, 0.5f);
+
+    private string _explodeTrigger = GameConstants.Anim.ExplodeTrigger;
+    private string _explodeStateTag = GameConstants.Anim.ExplodeStateTag;
 
     private ObjectSpawner _spawner;
     private bool _exploding;
@@ -65,12 +62,59 @@ public class Asteroid : MonoBehaviour
         // 재사용 대비 초기화
         _exploding = false;
         if (col != null) col.enabled = true;
-        if (animator != null)
+        ResetAnimatorState();
+    }
+
+    private void Update()
+    {
+        // 게임이 진행 중(Playing)일 때만 이동 로직 수행
+        var gm = GameManager.Instance;
+        if (gm == null || gm.State != GameManager.GameState.Playing)
         {
-            animator.ResetTrigger(explodeTrigger);
-            animator.Rebind();
-            animator.Update(0f);
+            return;
         }
+
+        if (_driftActive && !_exploding)
+        {
+            // 간단한 부유감
+            Vector3 p = transform.position;
+            p.x += _driftVelocity.x * Time.deltaTime;
+            p.y += _driftVelocity.y * Time.deltaTime;
+            transform.position = p;
+
+            // 디스폰 경계를 넘어가면 풀로 반환
+            if (_spawner != null && _spawner.IsOutsideDespawnBounds(transform.position))
+            {
+                _spawner.Despawn(transform);
+                return;
+            }
+        }
+    }
+
+    private void OnDisable()
+    {
+        // 페이드 작업 취소 및 알파 복구(풀로 돌아갔을 때 잔상 방지)
+        CancelFade();
+        SetAlpha(1f);
+        _driftActive = false;
+    }
+
+    // 애니메이터 초기 상태로 되돌리기
+    private void ResetAnimatorState()
+    {
+        if (animator == null) return;
+        animator.ResetTrigger(_explodeTrigger);
+        animator.Rebind();
+        animator.Update(0f);
+    }
+
+    // 진행 중인 페이드 작업 취소/정리
+    private void CancelFade()
+    {
+        if (_fadeCts == null) return;
+        try { _fadeCts.Cancel(); } catch { }
+        try { _fadeCts.Dispose(); } catch { }
+        _fadeCts = null;
     }
 
     public void ResetForSpawn()
@@ -78,26 +122,13 @@ public class Asteroid : MonoBehaviour
         _exploding = false;
         if (col != null) col.enabled = true;
         if (rb2d != null) rb2d.angularVelocity = 0f; // 초기화
-        if (animator != null)
-        {
-            animator.ResetTrigger(explodeTrigger);
-            animator.Rebind();
-            animator.Update(0f);
-        }
-
-        // 2D 환경 보장: X/Y 회전 제거, Z만 유지
-        var e = transform.eulerAngles;
-        if (!Mathf.Approximately(e.x, 0f) || !Mathf.Approximately(e.y, 0f))
-        {
-            transform.eulerAngles = new Vector3(0f, 0f, e.z);
-        }
+        ResetAnimatorState();
 
         // 스폰 시 페이드 인 처리
-        if (fadeInOnSpawn && spriteRenderers != null && spriteRenderers.Length > 0)
+        if (spriteRenderers != null && spriteRenderers.Length > 0)
         {
-            // 기존 페이드 작업 취소
-            _fadeCts?.Cancel();
-            _fadeCts?.Dispose();
+            // 기존 페이드 작업 취소 후 새로 시작
+            CancelFade();
             _fadeCts = new CancellationTokenSource();
             SetAlpha(0f);
             FadeInAsync(_fadeCts.Token).Forget();
@@ -141,7 +172,7 @@ public class Asteroid : MonoBehaviour
                 }
 
                 // 충돌 시 Hurt SFX 재생
-                AudioManager.Instance.PlaySfx("Hurt");
+                AudioManager.Instance.PlaySfx(GameConstants.SFX.Hurt);
 
                 // 장애물 소행성: 강한 진동
                 try
@@ -180,7 +211,7 @@ public class Asteroid : MonoBehaviour
     private async UniTaskVoid ExplodeAsync()
     {
         _exploding = true;
-        _driftActive = false; // 폭발 시 드리프트 정지
+        _driftActive = false; // 폭발 시 부유 정지
         if (col != null) col.enabled = false;
 
         // 폭발 SFX 재생
@@ -189,7 +220,7 @@ public class Asteroid : MonoBehaviour
             var am = AudioManager.Instance;
             if (am != null)
             {
-                am.PlaySfx("Explode");
+                am.PlaySfx(GameConstants.SFX.Explode);
             }
         }
         catch (Exception e)
@@ -198,34 +229,33 @@ public class Asteroid : MonoBehaviour
         }
 
         // 애니메이션 트리거
-        if (animator != null && !string.IsNullOrEmpty(explodeTrigger))
+        if (animator != null && !string.IsNullOrEmpty(_explodeTrigger))
         {
-            animator.ResetTrigger(explodeTrigger);
-            animator.SetTrigger(explodeTrigger);
+            animator.ResetTrigger(_explodeTrigger);
+            animator.SetTrigger(_explodeTrigger);
         }
 
         // 점수 지급/팝업: 장애물이 아닌 경우에만 수행
         if (!isObstacle)
         {
+            int amount = 0;
             try
             {
-                int amount = 0;
                 if (GameManager.Instance != null)
                 {
                     amount = GameManager.Instance.AwardAsteroidScore();
-                }
-                if (amount > 0)
-                {
-                    _spawner?.ShowScorePopup(amount, transform.position);
                 }
             }
             catch (Exception e)
             {
                 Debug.LogWarning($"[Asteroid] 점수 추가/팝업 처리 중 예외: {e.Message}");
             }
+
+            if (amount > 0)
+                _spawner?.ShowScorePopup(amount, transform.position);
         }
 
-        // 상태 전이 프레임 반영
+        // 애니메이터 상태 전이 프레임 반영
         await UniTask.Yield(PlayerLoopTiming.Update);
 
         float timeout = Mathf.Max(0.1f, fallbackExplodeDuration * 3f);
@@ -234,27 +264,14 @@ public class Asteroid : MonoBehaviour
         if (animator != null)
         {
             // 태그가 있다면 해당 상태 종료까지 대기, 없으면 fallback
-            bool hasExplodeTag = false;
-            for (int i = 0; i < animator.layerCount; i++)
-            {
-                var info = animator.GetCurrentAnimatorStateInfo(i);
-                if (info.IsTag(explodeStateTag)) { hasExplodeTag = true; break; }
-            }
+            var info = animator.GetCurrentAnimatorStateInfo(0);
 
-            if (hasExplodeTag)
+            if (info.IsTag(_explodeStateTag))
             {
                 while (Time.time - start < timeout)
                 {
-                    bool done = true;
-                    for (int i = 0; i < animator.layerCount; i++)
-                    {
-                        var info = animator.GetCurrentAnimatorStateInfo(i);
-                        if (info.IsTag(explodeStateTag) && info.normalizedTime < 1f)
-                        {
-                            done = false; break;
-                        }
-                    }
-                    if (done) break;
+                    if (info.normalizedTime >= 1f)
+                        break;
                     await UniTask.Yield(PlayerLoopTiming.Update);
                 }
             }
@@ -263,23 +280,9 @@ public class Asteroid : MonoBehaviour
                 await UniTask.Delay(TimeSpan.FromSeconds(fallbackExplodeDuration));
             }
         }
-        else
-        {
-            await UniTask.Delay(TimeSpan.FromSeconds(fallbackExplodeDuration));
-        }
 
         // 풀로 반환
         _spawner?.Despawn(transform);
-    }
-
-    private void OnDisable()
-    {
-        // 페이드 작업 취소 및 알파 복구(풀로 돌아갔을 때 잔상 방지)
-        _fadeCts?.Cancel();
-        _fadeCts?.Dispose();
-        _fadeCts = null;
-        SetAlpha(1f);
-        _driftActive = false;
     }
 
     // 스프라이트 알파 일괄 설정
@@ -297,7 +300,7 @@ public class Asteroid : MonoBehaviour
         }
     }
 
-    // 스폰 시 페이드 인 비동기 처리(UniTask)
+    // 스폰 시 페이드 인 비동기 처리
     private async UniTaskVoid FadeInAsync(CancellationToken ct)
     {
         float dur = Mathf.Max(0.01f, fadeInDuration);
@@ -312,53 +315,22 @@ public class Asteroid : MonoBehaviour
         SetAlpha(1f);
     }
 
-    // 드리프트 설정: 무작위 방향과 속도를 설정하고 활성화
+    // 부유 설정: 무작위 방향과 속도를 설정하고 활성화
     private void SetupDrift()
     {
-        if (!driftOnSpawn)
-        {
-            _driftActive = false;
-            _driftVelocity = Vector2.zero;
-            return;
-        }
         float min = Mathf.Max(0f, Mathf.Min(driftSpeedRange.x, driftSpeedRange.y));
         float max = Mathf.Max(min, Mathf.Max(driftSpeedRange.x, driftSpeedRange.y));
         float speed = Random.Range(min, max);
         // 무작위 단위 방향(2D)
-        Vector2 dir = (Random.insideUnitCircle.sqrMagnitude < 1e-6f)
-            ? Vector2.right
-            : Random.insideUnitCircle.normalized;
+        Vector2 sample = Random.insideUnitCircle;
+        Vector2 dir = (sample.sqrMagnitude < 1e-6f) ? Vector2.right : sample.normalized;
         _driftVelocity = dir * speed;
         _driftActive = true;
     }
 
-    private void Update()
-    {
-        // 게임이 진행 중(Playing)일 때만 이동 로직 수행
-        var gm = GameManager.Instance;
-        if (gm == null || gm.State != GameManager.GameState.Playing)
-        {
-            return;
-        }
-
-        if (_driftActive && !_exploding)
-        {
-            // 간단한 부유감: 선형 드리프트만 적용(2D 평면)
-            Vector3 p = transform.position;
-            p.x += _driftVelocity.x * Time.deltaTime;
-            p.y += _driftVelocity.y * Time.deltaTime;
-            transform.position = p;
-
-            // 화면 경계 + 마진을 넘어가면 풀로 반환
-            if (_spawner != null && _spawner.IsOutsideDespawnBounds(transform.position))
-            {
-                _spawner.Despawn(transform);
-                return;
-            }
-        }
-    }
-
-    // 외부에서 장애물 플래그 설정(스포너에서 지정)
+    /// <summary>
+    /// 외부에서 장애물 플래그 설정(스포너에서 지정)
+    /// </summary>
     public void SetAsObstacle(bool value)
     {
         isObstacle = value;

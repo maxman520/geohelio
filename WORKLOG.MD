@@ -244,7 +244,11 @@
 2025-09-11 21:02 | feat | ShootingStar 속도를 ObjectSpawner.spawnRadius 기반으로 고정(폴백 유지) | Assets/Scripts/Game/ShootingStar.cs
 2025-09-11 21:55 | docs | 블랙홀 흡인속도 조절 로직 수정 | Assets/Scripts/Game/BlackHole.cs
 
-<!-- COMMIT_BOOKMARK -->
-
 2025-09-12 16:42 | feat | 에디터 스크린샷 캡처 유틸 추가(게임 뷰 해상도 기준, 프로젝트 루트 저장) | Assets/Editor/ScreenshotTool.cs
 2025-09-12 17:50 | docs | README에 유튜브 영상 링크 추가 | README.md
+
+<!-- COMMIT_BOOKMARK -->
+
+2025-09-12 18:08 | feat | SfxCatalog 키를 GameConstants.SFX 상수로 추가 | Assets/Scripts/Utilities/GameConstants.cs,Assets/Audio/SfxCatalog.asset
+2025-09-12 18:36 | chore | Asteroid Explode 애니메이션에 태그 추가(Explode) | Assets/Animation/\_Object/Explode.anim,Assets/Animation/\_Object/Asteroid_01.controller
+2025-09-12 18:46 | refactor | Asteroid 공통화(애니메이터 리셋/페이드 취소) 및 SFX 키 상수화, 드리프트 샘플 축소 | Assets/Scripts/Game/Asteroid.cs
