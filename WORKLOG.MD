@@ -240,8 +240,11 @@
 
 2025-09-11 19:59 | fix | 장애물 소행성·슈팅스타 충돌 시 진동을 Heavy로 변경 | Assets/Scripts/Game/Asteroid.cs,Assets/Scripts/Game/ShootingStar.cs
 
-<!-- COMMIT_BOOKMARK -->
-
 2025-09-11 20:32 | feat | 카메라 기반 spawnRadius 적용 및 initialCount/maxAlive 설정| Assets/Scripts/Game/ObjectSpawner.cs
 2025-09-11 21:02 | feat | ShootingStar 속도를 ObjectSpawner.spawnRadius 기반으로 고정(폴백 유지) | Assets/Scripts/Game/ShootingStar.cs
 2025-09-11 21:55 | docs | 블랙홀 흡인속도 조절 로직 수정 | Assets/Scripts/Game/BlackHole.cs
+
+<!-- COMMIT_BOOKMARK -->
+
+2025-09-12 16:42 | feat | 에디터 스크린샷 캡처 유틸 추가(게임 뷰 해상도 기준, 프로젝트 루트 저장) | Assets/Editor/ScreenshotTool.cs
+2025-09-12 17:50 | docs | README에 유튜브 영상 링크 추가 | README.md

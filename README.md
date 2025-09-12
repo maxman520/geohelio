@@ -29,7 +29,8 @@
 
 ## 영상 & 스크린샷
 
-- YouTube: [![게임 플레이 영상](썸네일 링크)](유튜브 링크)
+- YouTube:
+  [![게임 플레이 영상](https://img.youtube.com/vi/dOgZe2Uq0AU/0.jpg)](https://youtube.com/shorts/dOgZe2Uq0AU?feature=share)
 - 스크린샷:
   ![스크린샷](./Assets/Screenshots/00.png)
   ![스크린샷](./Assets/Screenshots/01.png)
