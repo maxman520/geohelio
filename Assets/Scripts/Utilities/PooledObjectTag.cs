@@ -1,19 +1,18 @@
 using UnityEngine;
 
 /// <summary>
-/// 풀에서 생성된 인스턴스에 원본 프리팹의 키(프리팹 이름)를 부여해,
+/// 풀에서 생성된 인스턴스에 원본 프리팹 참조를 부여해,
 /// 반환 시 올바른 풀을 역참조할 수 있도록 돕는 태그 컴포넌트.
 /// </summary>
 [DisallowMultipleComponent]
 public class PooledObjectTag : MonoBehaviour
 {
-    [SerializeField] private string _poolKey;
+    [SerializeField] private GameObject _sourcePrefab; // 원본 프리팹 참조
 
-    public string PoolKey => _poolKey;
+    public GameObject SourcePrefab => _sourcePrefab;
 
-    public void SetKey(string key)
+    public void SetPrefab(GameObject prefab)
     {
-        _poolKey = key;
+        _sourcePrefab = prefab;
     }
 }
-

@@ -87,12 +87,13 @@ public class ObjectSpawner : MonoBehaviour
     private readonly List<Transform> _spawnedShootingStars = new List<Transform>(); // 슈팅스타 목록
     private float _baseSpawnInterval; // 동적 조정을 위한 기준 스폰 간격(초)
     private bool _spawnIntervalHalved; // 현재 스폰 간격이 절반 모드인지 여부
-    // 유니티 내장 풀 딕셔너리: key = 프리팹 이름, value = ObjectPool
-    private readonly Dictionary<string, ObjectPool<GameObject>> _pools = new Dictionary<string, ObjectPool<GameObject>>();
+    // 유니티 내장 풀 딕셔너리: key = 프리팹 참조, value = ObjectPool
+    private readonly Dictionary<GameObject, ObjectPool<GameObject>> _pools = new Dictionary<GameObject, ObjectPool<GameObject>>();
     private PlayerController _player;
     private Camera _camera;
     private bool _startSignalReceived;           // 시작 신호(첫 중심 전환) 수신 여부
-    private bool _initializedAfterReset;         // Initialize 이후 상태 플래그
+    // 리스트 주기 정리 누적 타이머(성능 최적화)
+    private float _cleanupAccum;
     // 블랙홀 진행 상태
     private CancellationTokenSource _blackHoleCts;
     private GameObject _activeBlackHole;
@@ -133,11 +134,7 @@ public class ObjectSpawner : MonoBehaviour
             Debug.Log($"[ObjectSpawner] 카메라 기반 스폰 반경 적용: radius={spawnRadius:F2}, initialCount={initialCount}, maxAlive={maxAlive}");
         }
 
-        // 플레이어 중심 전환 이벤트 구독(가능 시)
-        if (_player != null)
-        {
-            _player.OnCenterToggled += OnPlayerCenterToggled;
-        }
+        // 시작 신호 구독은 Initialize에서 처리한다.
 
         // 스폰 간격 기준값 저장(런타임 시작 시점의 인스펙터 값을 기준으로 사용)
         _baseSpawnInterval = Mathf.Max(0.0001f, spawnInterval);
@@ -174,26 +171,38 @@ public class ObjectSpawner : MonoBehaviour
             }
         }
 
-        if (spawnInterval < 0.05f) spawnInterval = 0.05f;
-        if (maxAlive < 0) maxAlive = 0;
-        if (spawnRadius < 0f) spawnRadius = 0f;
-        if (initialCount < 0) initialCount = 0;
-        if (minSeparation < 0f) minSeparation = 0f;
-        if (orbitEpsilon < 0f) orbitEpsilon = 0f;
-        if (despawnMargin < 0f) despawnMargin = 0f;
-        if (orbitGap < 0f) orbitGap = 0f;
-        if (obstacleSpawnInterval < 0.05f) obstacleSpawnInterval = 0.05f;
-        if (obstacleMinSeparation < 0f) obstacleMinSeparation = 0f;
-        if (obstacleStageDuration < 1f) obstacleStageDuration = 1f;
+        // 값 보정 유틸(로컬 함수)
+        static float ClampMinF(float v, float min) => v < min ? min : v;
+        static int ClampMinI(int v, int min) => v < min ? min : v;
+        static Vector2 EnsureRange(Vector2 range, float minStart)
+        {
+            float x = Mathf.Max(minStart, range.x);
+            float y = Mathf.Max(x, range.y);
+            return new Vector2(x, y);
+        }
 
-        if (shootingStarMaxAlive < 0) shootingStarMaxAlive = 0;
-        if (shootingStarSpeedRange.x < 0.1f) shootingStarSpeedRange.x = 0.1f;
-        if (shootingStarSpeedRange.y < shootingStarSpeedRange.x) shootingStarSpeedRange.y = shootingStarSpeedRange.x;
-        if (shootingStarInitialDelay < 0f) shootingStarInitialDelay = 0f;
-        if (shootingStarPostMaxCooldown < 0f) shootingStarPostMaxCooldown = 0f;
-        if (shootingStarRandomDelayRange.x < 0f) shootingStarRandomDelayRange.x = 0f;
-        if (shootingStarRandomDelayRange.y < shootingStarRandomDelayRange.x) shootingStarRandomDelayRange.y = shootingStarRandomDelayRange.x;
-        if (shootingStarPassOffsetRange.y < shootingStarPassOffsetRange.x) shootingStarPassOffsetRange.y = shootingStarPassOffsetRange.x;
+        // 일반/장애물/슈팅스타 보정
+        spawnInterval = ClampMinF(spawnInterval, 0.05f);
+        maxAlive = ClampMinI(maxAlive, 0);
+        spawnRadius = ClampMinF(spawnRadius, 0f);
+        initialCount = ClampMinI(initialCount, 0);
+        minSeparation = ClampMinF(minSeparation, 0f);
+        orbitEpsilon = ClampMinF(orbitEpsilon, 0f);
+        despawnMargin = ClampMinF(despawnMargin, 0f);
+        orbitGap = ClampMinF(orbitGap, 0f);
+        obstacleSpawnInterval = ClampMinF(obstacleSpawnInterval, 0.05f);
+        obstacleMinSeparation = ClampMinF(obstacleMinSeparation, 0f);
+        obstacleStageDuration = ClampMinF(obstacleStageDuration, 1f);
+
+        shootingStarMaxAlive = ClampMinI(shootingStarMaxAlive, 0);
+        shootingStarSpeedRange = EnsureRange(shootingStarSpeedRange, 0.1f);
+        shootingStarInitialDelay = ClampMinF(shootingStarInitialDelay, 0f);
+        shootingStarPostMaxCooldown = ClampMinF(shootingStarPostMaxCooldown, 0f);
+        shootingStarRandomDelayRange = EnsureRange(shootingStarRandomDelayRange, 0f);
+        if (shootingStarPassOffsetRange.y < shootingStarPassOffsetRange.x)
+        {
+            shootingStarPassOffsetRange.y = shootingStarPassOffsetRange.x;
+        }
 
         if (scoreFloatingTextPrefab != null)
         {
@@ -205,11 +214,10 @@ public class ObjectSpawner : MonoBehaviour
         }
 
         // 블랙홀 관련 값 보정
-        if (blackHoleSpawnRadius < 0f) blackHoleSpawnRadius = 0f;
-        if (blackHoleLifetimeSeconds < 0f) blackHoleLifetimeSeconds = 0f;
-        if (blackHoleSpawnDelayRange.x < 0f) blackHoleSpawnDelayRange.x = 0f;
-        if (blackHoleSpawnDelayRange.y < blackHoleSpawnDelayRange.x) blackHoleSpawnDelayRange.y = blackHoleSpawnDelayRange.x;
-        if (blackHoleOrbitEpsilon < 0f) blackHoleOrbitEpsilon = 0f;
+        blackHoleSpawnRadius = ClampMinF(blackHoleSpawnRadius, 0f);
+        blackHoleLifetimeSeconds = ClampMinF(blackHoleLifetimeSeconds, 0f);
+        blackHoleSpawnDelayRange = EnsureRange(blackHoleSpawnDelayRange, 0f);
+        blackHoleOrbitEpsilon = ClampMinF(blackHoleOrbitEpsilon, 0f);
     }
 #endif
 
@@ -247,13 +255,21 @@ public class ObjectSpawner : MonoBehaviour
         }
 
         UpdateShootingStarSchedule();
+
+        // 리스트 주기 정리(매 프레임 O(n) 스캔 방지)
+        _cleanupAccum += Time.deltaTime;
+        if (_cleanupAccum >= 0.5f)
+        {
+            _cleanupAccum = 0f;
+            CleanupList();
+            CleanupObstacleList();
+            CleanupShootingList();
+        }
     }
 
     // 일반 소행성 수가 initialCount보다 적으면 스폰 간격을 절반으로, 아니면 원래 값으로 복구한다.
     private void AdjustSpawnIntervalByAliveCount()
     {
-        // 최신 상태를 반영하기 위해 null 항목 정리 후 개수 계산
-        CleanupList();
         int alive = _spawned.Count;
         if (alive < Mathf.Max(0, initialCount))
         {
@@ -295,8 +311,6 @@ public class ObjectSpawner : MonoBehaviour
         _timer = 0f;
         _obstacleTimer = 0f;
         _shootingStarNextAttemptTime = -1f;
-        
-        _initializedAfterReset = true;
         Debug.Log("[ObjectSpawner] 초기화 완료: 초기 배치 생성 후 시작 신호(첫 중심 전환) 대기");
 
         // 블랙홀 루프 정지 및 정리
@@ -315,7 +329,7 @@ public class ObjectSpawner : MonoBehaviour
 
         if (_player != null)
         {
-            try { _player.OnCenterToggled -= OnPlayerCenterToggled; } catch { }
+            _player.OnCenterToggled -= OnPlayerCenterToggled; // 미구독이어도 예외 없음
             _player.OnCenterToggled += OnPlayerCenterToggled;
         }
     }
@@ -334,7 +348,7 @@ public class ObjectSpawner : MonoBehaviour
     // 플레이어 중심 전환 이벤트 처리(첫 신호만 처리 후 구독 해제)
     private void OnPlayerCenterToggled(bool isSun)
     {
-        if (!_initializedAfterReset || _startSignalReceived) return;
+        if (_startSignalReceived) return;
         HandleStartSignal();
         // 첫 생성은 초기 지연 + 랜덤 추가 지연 이후
         float extra = Random.Range(shootingStarRandomDelayRange.x, shootingStarRandomDelayRange.y);
@@ -404,23 +418,7 @@ public class ObjectSpawner : MonoBehaviour
             Vector3 playerPos = Vector3.zero;
             if (_player != null) { var pt = _player.transform.position; playerPos = new Vector3(pt.x, pt.y, 0f); }
             float passOff = Random.Range(shootingStarPassOffsetRange.x, shootingStarPassOffsetRange.y);
-            Vector2 d = end - start;
-            bool horizontal = Mathf.Abs(d.x) >= Mathf.Abs(d.y);
-            Vector3 passPoint;
-            if (horizontal)
-            {
-                // 가로 경로: y를 플레이어 축으로 정렬, x는 중점
-                float y = playerPos.y + passOff;
-                float xMid = 0.5f * (start.x + end.x);
-                passPoint = new Vector3(xMid, y, 0f);
-            }
-            else
-            {
-                // 세로 경로: x를 플레이어 축으로 정렬, y는 중점
-                float x = playerPos.x + passOff;
-                float yMid = 0.5f * (start.y + end.y);
-                passPoint = new Vector3(x, yMid, 0f);
-            }
+            Vector3 passPoint = ComputePassPoint(start, end, playerPos, passOff);
 
             // 속도 선택
             float spd = Random.Range(Mathf.Min(shootingStarSpeedRange.x, shootingStarSpeedRange.y), Mathf.Max(shootingStarSpeedRange.x, shootingStarSpeedRange.y));
@@ -440,36 +438,39 @@ public class ObjectSpawner : MonoBehaviour
         Vector3 startFallback = camCenter + new Vector3(dir.x, dir.y, 0f) * baseR;
         Vector3 endFallback = new Vector3(-startFallback.x, -startFallback.y, startFallback.z);
         // u=0.5 통과 지점(passPoint) 계산(축 정렬)
-        Vector3 passPointFb;
-        {
-            Vector3 playerPos = Vector3.zero;
-            if (_player != null) { var pt = _player.transform.position; playerPos = new Vector3(pt.x, pt.y, 0f); }
-            float passOff = Random.Range(shootingStarPassOffsetRange.x, shootingStarPassOffsetRange.y);
-            Vector2 d2 = endFallback - startFallback;
-            bool horizontal2 = Mathf.Abs(d2.x) >= Mathf.Abs(d2.y);
-            if (horizontal2)
-            {
-                float y = playerPos.y + passOff;
-                float xMid = 0.5f * (startFallback.x + endFallback.x);
-                passPointFb = new Vector3(xMid, y, 0f);
-            }
-            else
-            {
-                float x = playerPos.x + passOff;
-                float yMid = 0.5f * (startFallback.y + endFallback.y);
-                passPointFb = new Vector3(x, yMid, 0f);
-            }
-        }
+        Vector3 playerPosFb = Vector3.zero;
+        if (_player != null) { var pt = _player.transform.position; playerPosFb = new Vector3(pt.x, pt.y, 0f); }
+        float passOffFb = Random.Range(shootingStarPassOffsetRange.x, shootingStarPassOffsetRange.y);
+        Vector3 passPointFb = ComputePassPoint(startFallback, endFallback, playerPosFb, passOffFb);
         float spdFb = Random.Range(Mathf.Min(shootingStarSpeedRange.x, shootingStarSpeedRange.y), Mathf.Max(shootingStarSpeedRange.x, shootingStarSpeedRange.y));
         SpawnShootingAt(startFallback, endFallback, passPointFb, spdFb);
         return true;
     }
+    
+    // 슈팅스타 경유점 계산: 경로 중점(u=0.5)에서 플레이어 축과 정렬된 점을 반환
+    private Vector3 ComputePassPoint(Vector3 start, Vector3 end, Vector3 playerPos, float passOffset)
+    {
+        Vector2 d = end - start;
+        bool horizontal = Mathf.Abs(d.x) >= Mathf.Abs(d.y);
+        if (horizontal)
+        {
+            // 가로 경로: y를 플레이어 축으로 정렬, x는 중점
+            float y = playerPos.y + passOffset;
+            float xMid = 0.5f * (start.x + end.x);
+            return new Vector3(xMid, y, 0f);
+        }
+        else
+        {
+            // 세로 경로: x를 플레이어 축으로 정렬, y는 중점
+            float x = playerPos.x + passOffset;
+            float yMid = 0.5f * (start.y + end.y);
+            return new Vector3(x, yMid, 0f);
+        }
+    }
     private void SpawnShootingAt(Vector3 start, Vector3 end, Vector3 passPoint, float speed)
     {
         var go = GetFromPool(shootingStarPrefab);
-        go.transform.SetParent(transform, false);
-        go.transform.position = start;
-        go.transform.rotation = Quaternion.identity;
+        SetupSpawned(go, start, Quaternion.identity);
 
         var star = go.GetComponent<ShootingStar>();
         if (star == null)
@@ -833,11 +834,8 @@ public class ObjectSpawner : MonoBehaviour
     private void SpawnObstacleAt(Vector3 pos)
     {
         var go = GetFromPool(obstacleAsteroidPrefab);
-        go.transform.SetParent(transform, false);
-        go.transform.position = pos;
-
         float z = Random.Range(0f, 360f);
-        go.transform.rotation = Quaternion.Euler(0f, 0f, z);
+        SetupSpawned(go, pos, Quaternion.Euler(0f, 0f, z));
 
         var asteroid = go.GetComponent<Asteroid>();
         if (asteroid == null)
@@ -952,8 +950,7 @@ public class ObjectSpawner : MonoBehaviour
     private ObjectPool<GameObject> GetPoolForPrefab(GameObject prefab)
     {
         if (prefab == null) return null;
-        string key = prefab.name;
-        if (_pools.TryGetValue(key, out var pool)) return pool;
+        if (_pools.TryGetValue(prefab, out var pool)) return pool;
 
         // 풀 생성: 동일 프리팹만 생성되도록 createFunc에 프리팹 캡처
         bool collectionCheck = true;
@@ -966,7 +963,7 @@ public class ObjectSpawner : MonoBehaviour
                 // 풀 키 태그 설정
                 var tag = go.GetComponent<PooledObjectTag>();
                 if (tag == null) tag = go.AddComponent<PooledObjectTag>();
-                tag.SetKey(key);
+                tag.SetPrefab(prefab);
                 go.SetActive(false);
                 return go;
             },
@@ -991,7 +988,7 @@ public class ObjectSpawner : MonoBehaviour
             maxSize: maxSize
         );
 
-        _pools[key] = pool;
+        _pools[prefab] = pool;
         return pool;
     }
 
@@ -1006,7 +1003,8 @@ public class ObjectSpawner : MonoBehaviour
     {
         if (go == null) return;
         var tag = go.GetComponent<PooledObjectTag>();
-        if (tag == null || string.IsNullOrEmpty(tag.PoolKey) || !_pools.TryGetValue(tag.PoolKey, out var pool))
+        var prefab = tag != null ? tag.SourcePrefab : null;
+        if (prefab == null || !_pools.TryGetValue(prefab, out var pool))
         {
             Debug.LogWarning("[ObjectSpawner] 풀 키를 찾지 못해 오브젝트를 비활성화만 합니다.", go);
             go.SetActive(false);
@@ -1016,14 +1014,21 @@ public class ObjectSpawner : MonoBehaviour
         pool.Release(go);
     }
 
+    // 공통 스폰 후 기본 설정(부모/위치/회전)
+    private void SetupSpawned(GameObject go, Vector3 pos, Quaternion rot)
+    {
+        if (go == null) return;
+        go.transform.SetParent(transform, false);
+        go.transform.position = pos;
+        go.transform.rotation = rot;
+    }
+
     private void SpawnAt(Vector3 pos)
     {
         var go = GetFromPool(asteroidPrefab);
-        go.transform.SetParent(transform, false);
-        go.transform.position = pos;
         // 스폰 시 Z 회전값을 랜덤으로 부여하여 소행성 방향을 다양화
         float z = Random.Range(0f, 360f);
-        go.transform.rotation = Quaternion.Euler(0f, 0f, z);
+        SetupSpawned(go, pos, Quaternion.Euler(0f, 0f, z));
 
         // 구성 요소 준비(프리팹 구성 보장: Asteroid 컴포넌트 필수)
         var asteroid = go.GetComponent<Asteroid>();
@@ -1049,10 +1054,8 @@ public class ObjectSpawner : MonoBehaviour
             return;
         }
         var go = GetFromPool(scoreFloatingTextPrefab);
-        go.transform.SetParent(transform, false);
-
         Vector3 startPos = worldPos;
-        go.transform.position = startPos;
+        SetupSpawned(go, startPos, Quaternion.identity);
 
         var comp = go.GetComponent<ScoreFloatingText>();
         if (comp == null)
@@ -1109,30 +1112,19 @@ public class ObjectSpawner : MonoBehaviour
         _spawnedShootingStars.Clear();
     }
 
-    // 목록 내 null 항목 정리
-    private void CleanupList()
+    // 목록 내 null 항목 정리(공통)
+    private static void CleanNulls(List<Transform> list)
     {
-        for (int i = _spawned.Count - 1; i >= 0; i--)
+        if (list == null) return;
+        for (int i = list.Count - 1; i >= 0; i--)
         {
-            if (_spawned[i] == null) _spawned.RemoveAt(i);
+            if (list[i] == null) list.RemoveAt(i);
         }
     }
 
-    private void CleanupObstacleList()
-    {
-        for (int i = _spawnedObstacles.Count - 1; i >= 0; i--)
-        {
-            if (_spawnedObstacles[i] == null) _spawnedObstacles.RemoveAt(i);
-        }
-    }
-
-    private void CleanupShootingList()
-    {
-        for (int i = _spawnedShootingStars.Count - 1; i >= 0; i--)
-        {
-            if (_spawnedShootingStars[i] == null) _spawnedShootingStars.RemoveAt(i);
-        }
-    }
+    private void CleanupList() => CleanNulls(_spawned);
+    private void CleanupObstacleList() => CleanNulls(_spawnedObstacles);
+    private void CleanupShootingList() => CleanNulls(_spawnedShootingStars);
 
     // 소행성이 파괴될 때: 목록에서 제거
     public void NotifyDestroyed(Transform tr)
