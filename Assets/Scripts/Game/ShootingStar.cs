@@ -13,8 +13,6 @@ public class ShootingStar : MonoBehaviour
 {
     [Header("참조")]
     [SerializeField] private Collider2D col;
-    [SerializeField] private Rigidbody2D rb2d;
-    [SerializeField] private Animator animator;
 
     [Header("예측 라인(점선)")]
     [Tooltip("예측 경로를 표시할 LineRenderer. 비워두면 자동 생성됨")]
@@ -35,11 +33,9 @@ public class ShootingStar : MonoBehaviour
     [Tooltip("발사 지연 시간(초): 경로 라인을 먼저 표시한 후 이 시간이 지난 뒤 이동 시작")]
     [SerializeField] private float launchDelaySeconds = 0.5f;
 
-    [Header("SFX")]
-    [Tooltip("이동 시작 시 1회 재생할 SFX 키")]
-    [SerializeField] private string startSfxKey = "ShootingStarStart";
-    [Tooltip("MoveAsync 진행 동안 주기적으로 재생할 SFX 키")]
-    [SerializeField] private string burnSfxKey = "ShootingStarBurn";
+    // SFX 키
+    private string _startSfxKey = GameConstants.SFX.ShootingStarStart;
+    private string _burnSfxKey = GameConstants.SFX.ShootingStarBurn;
 
     private ObjectSpawner _spawner;
     private Vector3 _start, _end;     // 시작/도착 지점
@@ -52,7 +48,7 @@ public class ShootingStar : MonoBehaviour
     private Vector3[] _trajPoints;  // 라인 포인트(샘플)
     private float _trajTotalLength; // 전체 길이
     private bool _hasHitPlayer;     // 동일 개체로는 플레이어를 한 번만 피격 처리
-    private AudioManager.SfxHandle _burnSfxHandle; // 루프 SFX 핸들(새 방식)
+    private AudioManager.SfxHandle _burnSfxHandle; // 루프 SFX 핸들
 
     public void Initialize(ObjectSpawner spawner)
     {
@@ -62,8 +58,6 @@ public class ShootingStar : MonoBehaviour
     private void Awake()
     {
         if (col == null) col = GetComponent<Collider2D>();
-        if (rb2d == null) rb2d = GetComponent<Rigidbody2D>();
-        if (animator == null) animator = GetComponentInChildren<Animator>();
     }
 
     private void OnEnable()
@@ -154,7 +148,7 @@ public class ShootingStar : MonoBehaviour
         // 시작 SFX 재생
         try
         {
-            AudioManager.Instance.PlaySfx(startSfxKey);
+            AudioManager.Instance.PlaySfx(_startSfxKey);
         }
         catch (System.Exception e)
         {
@@ -168,9 +162,9 @@ public class ShootingStar : MonoBehaviour
         // 이동 중 버닝 SFX를 채널/핸들 기반 루프 재생
         try
         {
-            if (!string.IsNullOrEmpty(burnSfxKey) && AudioManager.Instance != null)
+            if (!string.IsNullOrEmpty(_burnSfxKey) && AudioManager.Instance != null)
             {
-                _burnSfxHandle = AudioManager.Instance.PlayLoopAttached(burnSfxKey, transform);
+                _burnSfxHandle = AudioManager.Instance.PlayLoopAttached(_burnSfxKey, transform);
             }
         }
         catch (System.Exception e)
