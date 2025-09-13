@@ -279,7 +279,6 @@
 2025-09-13 18:58 | refactor | shootingPassOffsetRange 제거 대응 — ComputePassPoint 내부에서 랜덤 오프셋 크기 생성하도록 변경 | Assets/Scripts/Game/ObjectSpawner.cs
 2025-09-13 19:05 | refactor | ObjectSpawner 불필요/미사용 로직 정리(OnDrawGizmos 내 미사용 변수 제거, GetDespawnRect 이중 검사 정리) | Assets/Scripts/Game/ObjectSpawner.cs
 
-<!-- COMMIT_BOOKMARK -->
 
 2025-09-13 19:18 | refactor | ShootingStar 성능 최적화 — Gradient/알파 키 캐시 재사용 및 진행도 증분을 경로 길이(\_trajTotalLength) 기반으로 변경 | Assets/Scripts/Game/ShootingStar.cs
 2025-09-13 19:32 | refactor | LineRenderer 인스펙터 주도 설정 전환 — 스크립트 폭/색/타일링 제어 제거, 인스펙터 Gradient 기반 캐시 초기화 | Assets/Scripts/Game/ShootingStar.cs
@@ -291,3 +290,10 @@
 2025-09-13 19:52 | refactor | 명칭 정리 — 메소드 EvaluatePosition를 PosOnLine으로 이름 변경하고 전역 참조 갱신 | Assets/Scripts/Game/ShootingStar.cs
 2025-09-13 19:52 | chore | 불필요 using 제거 — UnityEngine.Rendering 정리 | Assets/Scripts/Game/ShootingStar.cs
 2025-09-13 19:52 | refactor | 불필요 필드 정리 — speedRange/\_pathLength 제거(경로 길이 기반 이동으로 대체) | Assets/Scripts/Game/ShootingStar.cs
+
+<!-- COMMIT_BOOKMARK -->
+
+2025-09-13 20:00 | refactor | GameManager 참조 보장 일원화 — EnsureReferences 도입, ToReady에서 호출하고 Start의 중복 바인딩 제거, Update 내 스포너 탐색 제거 | Assets/Scripts/Game/GameManager.cs
+2025-09-13 20:08 | refactor | 재시작 로직 공통화 — SoftRestartAsync/RestartToReadyAsync 공통 메서드로 합치고 두 공개 API에서 호출 | Assets/Scripts/Game/GameManager.cs
+2025-09-13 20:08 | refactor | SFX 키 상수화 — GameOver 문자열을 GameConstants.SFX.GameOver로 통일 | Assets/Scripts/Game/GameManager.cs
+2025-09-13 20:18 | docs | GameManager 공개 메서드 Summary 추가(ToReady/StartGame/PauseGame/ResumeGame/EndGame/RestartAsync/SetDoubleScoreActive/SetRadiusDecaySuppressed/LockPlayerDistance/UnlockPlayerDistance) | Assets/Scripts/Game/GameManager.cs

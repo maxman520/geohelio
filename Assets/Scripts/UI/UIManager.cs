@@ -40,23 +40,11 @@ public class UIManager : SingletonMonoBehaviour<UIManager>
         if (GameManager.Instance != null)
         {
             // 씬 리로드 대신 소프트 리스타트 경로로 진입
-            GameManager.Instance.SoftRestartAsync().Forget();
+            GameManager.Instance.RestartAsync().Forget();
         }
         else
         {
             Debug.LogWarning("[UIManager] GameManager 인스턴스를 찾지 못했습니다. 다시하기 요청을 처리할 수 없습니다.");
-        }
-    }
-
-    public void RequestToMain()
-    {
-        if (GameManager.Instance != null)
-        {
-            GameManager.Instance.LoadMainScene();
-        }
-        else
-        {
-            Debug.LogWarning("[UIManager] GameManager 인스턴스를 찾지 못했습니다. 메인 이동 요청을 처리할 수 없습니다.");
         }
     }
 

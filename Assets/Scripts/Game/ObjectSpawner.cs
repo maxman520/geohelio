@@ -57,7 +57,7 @@ public class ObjectSpawner : MonoBehaviour
     [Tooltip("생성 시도 간 랜덤 추가 지연 범위(초)")]
     [SerializeField] private Vector2 shootingRandomDelayRange = new Vector2(0.5f, 3.0f);
     [Tooltip("슈팅스타 동시 최대 수")]
-    [SerializeField] private int shootingMaxAlive = 6;
+    [SerializeField] private int shootingMaxAlive = 2;
     private float _shootingSpeed; // 슈팅스타의 이동 속도
 
     [Header("블랙홀")]

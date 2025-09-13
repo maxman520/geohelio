@@ -225,7 +225,7 @@ public class TopLeftButtons : MonoBehaviour
         if (_gm != null)
         {
             // 게임 시작 전 상태(Ready)로만 복귀
-            _gm.RestartToReadyAsync().Forget();
+            _gm.RestartAsync().Forget();
 
             // 전면 광고 집계 알림(3회마다 노출 정책)
             if (AdsManager.Instance != null)
