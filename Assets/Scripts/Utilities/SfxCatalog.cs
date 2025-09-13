@@ -57,10 +57,4 @@ public class SfxCatalog : ScriptableObject
     {
         return key?.Trim() ?? string.Empty;
     }
-
-    private void OnValidate()
-    {
-        // 인스펙터에서 수정 시 인덱스를 재구성하도록 캐시 무효화
-        _index = null;
-    }
 }

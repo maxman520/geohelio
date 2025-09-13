@@ -551,7 +551,6 @@ public class ObjectSpawner : MonoBehaviour
         ReturnToPool(go);
     }
     
-
     public float GetGameOverRadius()
     {
         if (_camera != null && _camera.orthographic)

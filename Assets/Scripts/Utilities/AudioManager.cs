@@ -58,18 +58,11 @@ public class AudioManager : SingletonMonoBehaviour<AudioManager>
     private void Start()
     {
         // DataManager 설정 적용 및 구독
-        try
+        var dm = DataManager.Instance;
+        if (dm != null)
         {
-            var dm = DataManager.Instance;
-            if (dm != null)
-            {
-                SetMasterMute(dm.Muted);
-                dm.OnSettingsChanged += HandleDataSettingsChanged;
-            }
-        }
-        catch (Exception e)
-        {
-            Debug.LogWarning($"[AudioManager] DataManager 연동 중 예외: {e.Message}");
+            SetMasterMute(dm.Muted);
+            dm.OnSettingsChanged += HandleDataSettingsChanged;
         }
 
         // 시작 시 BGM 자동 재생 체크
@@ -89,15 +82,12 @@ public class AudioManager : SingletonMonoBehaviour<AudioManager>
         }
     }
 
-    private void OnDestroy()
+    protected override void OnDestroy()
     {
         // DataManager 구독 해제
-        try
-        {
-            var dm = DataManager.Instance;
-            if (dm != null) dm.OnSettingsChanged -= HandleDataSettingsChanged;
-        }
-        catch { }
+        var dm = DataManager.Instance;
+        if (dm != null)
+            dm.OnSettingsChanged -= HandleDataSettingsChanged;
 
         // 채널 정리
         for (int i = 0; i < _channels.Count; i++)
@@ -110,17 +100,10 @@ public class AudioManager : SingletonMonoBehaviour<AudioManager>
     // DataManager 설정 변경 구독 메소드
     private void HandleDataSettingsChanged()
     {
-        try
+        var dm = DataManager.Instance;
+        if (dm != null)
         {
-            var dm = DataManager.Instance;
-            if (dm != null)
-            {
-                SetMasterMute(dm.Muted);
-            }
-        }
-        catch (Exception e)
-        {
-            Debug.LogWarning($"[AudioManager] 설정 반영 중 예외: {e.Message}");
+            SetMasterMute(dm.Muted);
         }
     }
 
@@ -169,24 +152,27 @@ public class AudioManager : SingletonMonoBehaviour<AudioManager>
         sfxSource.spatialBlend = 0f;
     }
 
-    
-
-    #region 단순 재생/정지/Mute API
+    #region 단순 재생/정지/Mute 등 API
     /// <summary>
     /// 카탈로그에서 키로 클립과 기본 볼륨을 조회한다.
     /// </summary>
     public bool TryGetSfxClip(string key, out AudioClip clip, out float defaultVolume)
     {
-        clip = null; defaultVolume = 1f;
+        clip = null;
+        defaultVolume = 1f;
+
         if (string.IsNullOrWhiteSpace(key)) return false;
         if (sfxCatalog == null) return false;
+
         if (!sfxCatalog.TryGetEntry(key, out var entry) || entry == null || entry.Clip == null) return false;
-        clip = entry.Clip; defaultVolume = entry.DefaultVolume <= 0f ? 1f : entry.DefaultVolume;
+
+        clip = entry.Clip;
+        defaultVolume = entry.DefaultVolume <= 0f ? 1f : entry.DefaultVolume;
         return true;
     }
 
     /// <summary>
-    /// 문자열 키로 SFX를 재생합니다. 카탈로그가 없거나 키를 찾지 못하면 경고를 출력하고 무시합니다.
+    /// 문자열 키로 SFX를 재생한다. 카탈로그가 없거나 키를 찾지 못하면 경고를 출력하고 무시한다.
     /// </summary>
     public void PlaySfx(string key, float volumeScale = 1f)
     {
@@ -198,15 +184,14 @@ public class AudioManager : SingletonMonoBehaviour<AudioManager>
             return;
         }
 
-        if (!sfxCatalog.TryGetEntry(key, out var entry) || entry == null || entry.Clip == null)
+        if (!TryGetSfxClip(key, out var clip, out var baseVol))
         {
             Debug.LogWarning($"[AudioManager] 카탈로그에서 SFX 키를 찾지 못했습니다: {key}");
             return;
         }
 
-        float baseVol = entry.DefaultVolume <= 0f ? 1f : entry.DefaultVolume;
         float vol = Mathf.Clamp01(volumeScale) * Mathf.Clamp01(baseVol);
-        sfxSource.PlayOneShot(entry.Clip, vol);
+        sfxSource.PlayOneShot(clip, vol);
     }
 
     /// <summary>
@@ -222,19 +207,13 @@ public class AudioManager : SingletonMonoBehaviour<AudioManager>
 
         if (bgmSource == null) EnsureAudioSources();
 
-        // 동일 트랙이면 재시작 없이 유지(단순화)
-        if (bgmSource.clip == clip && bgmSource.isPlaying)
-        {
-            return;
-        }
+        // 동일 트랙이면 재시작 없이 유지
+        if (bgmSource.clip == clip && bgmSource.isPlaying) return;
 
         float dur = fadeSeconds >= 0f ? fadeSeconds : Mathf.Max(0f, defaultFadeSeconds);
 
-        // 중복 페이드 취소
-        _bgmFadeCts?.Cancel();
-        _bgmFadeCts?.Dispose();
-        _bgmFadeCts = new CancellationTokenSource();
-        var ct = _bgmFadeCts.Token;
+        // 중복 페이드 취소 후 새 CTS 생성
+        var ct = RenewCts(ref _bgmFadeCts);
 
         float targetVol = bgmSource.volume;
         float startVol = targetVol;
@@ -242,7 +221,7 @@ public class AudioManager : SingletonMonoBehaviour<AudioManager>
         // 현재 재생 중이면 페이드 아웃
         if (bgmSource.isPlaying && bgmSource.clip != null && dur > 0f && startVol > 0f)
         {
-            await FadeBgmAsync(startVol, 0f, dur, ct);
+            await FadeVolumeAsync(bgmSource, startVol, 0f, dur, ct);
         }
 
         // 교체 및 시작
@@ -255,7 +234,7 @@ public class AudioManager : SingletonMonoBehaviour<AudioManager>
         // 페이드 인
         if (dur > 0f && targetVol > 0f)
         {
-            await FadeBgmAsync(0f, targetVol, dur, ct);
+            await FadeVolumeAsync(bgmSource, 0f, targetVol, dur, ct);
         }
         else
         {
@@ -272,22 +251,23 @@ public class AudioManager : SingletonMonoBehaviour<AudioManager>
 
         float dur = fadeSeconds >= 0f ? fadeSeconds : Mathf.Max(0f, defaultFadeSeconds);
 
-        _bgmFadeCts?.Cancel();
-        _bgmFadeCts?.Dispose();
-        _bgmFadeCts = new CancellationTokenSource();
-        var ct = _bgmFadeCts.Token;
+        var ct = RenewCts(ref _bgmFadeCts);
 
         float startVol = bgmSource.volume;
         if (dur > 0f && startVol > 0f)
         {
-            await FadeBgmAsync(startVol, 0f, dur, ct);
+            await FadeVolumeAsync(bgmSource, startVol, 0f, dur, ct);
         }
         bgmSource.Stop();
         bgmSource.clip = null;
     }
-    private async UniTask FadeBgmAsync(float from, float to, float seconds, CancellationToken ct)
+
+    /// <summary>
+    /// 공용 볼륨 페이드 헬퍼: 지정 AudioSource의 볼륨을 from→to로 seconds 동안 선형 보간한다.
+    /// </summary>
+    private static async UniTask FadeVolumeAsync(AudioSource src, float from, float to, float seconds, CancellationToken ct)
     {
-        if (bgmSource == null) return;
+        if (src == null) return;
         seconds = Mathf.Max(0.0001f, seconds);
         float t = 0f;
         while (t < seconds)
@@ -295,21 +275,19 @@ public class AudioManager : SingletonMonoBehaviour<AudioManager>
             if (ct.IsCancellationRequested) return;
             t += Time.unscaledDeltaTime; // 페이드에 시간 정지 영향 최소화
             float k = Mathf.Clamp01(t / seconds);
-            bgmSource.volume = Mathf.Lerp(from, to, k);
+            src.volume = Mathf.Lerp(from, to, k);
             await UniTask.Yield(PlayerLoopTiming.Update, ct);
         }
-        bgmSource.volume = to;
+        src.volume = to;
     }
 
     /// <summary>
-    /// 전역 음소거 설정. 간단히 AudioListener.pause 와 소스 mute를 함께 갱신한다.
+    /// 전역 음소거 설정. 모든 소스/채널에 일괄 적용한다.
     /// </summary>
     public void SetMasterMute(bool muted)
     {
         _muted = muted;
-        if (bgmSource != null) bgmSource.mute = muted;
-        if (sfxSource != null) sfxSource.mute = muted;
-        ApplyMuteToChannels();
+        ApplyMuteToAll();
         Debug.Log($"[AudioManager] 전역 음소거: {(muted ? "켜짐" : "꺼짐")} ");
         try
         {
@@ -337,7 +315,7 @@ public class AudioManager : SingletonMonoBehaviour<AudioManager>
         if (sfxSource == null) EnsureAudioSources();
         sfxSource.volume = Mathf.Clamp01(value);
     }
-    #endregion 단순 재생/정지/Mute API
+    #endregion 단순 재생/정지/Mute 등 API
 
     #region 핸들/채널 기반 API
 
@@ -354,7 +332,7 @@ public class AudioManager : SingletonMonoBehaviour<AudioManager>
         ch.Play(clip, looping: false, volume: vol);
         // 자동 해제 감시
         ch.WatchAndReleaseAsync(this).Forget();
-        return new SfxHandle(this, ch);
+        return new SfxHandle(ch);
     }
 
     /// <summary>
@@ -368,10 +346,9 @@ public class AudioManager : SingletonMonoBehaviour<AudioManager>
         float vol = Mathf.Clamp01(volume) * Mathf.Clamp01(baseVol);
         var ch = AcquireChannel(owner);
         if (ch == null) return null;
-        ch.Attach(owner);
         ch.Play(clip, looping: false, volume: vol);
         ch.WatchAndReleaseAsync(this).Forget();
-        return new SfxHandle(this, ch);
+        return new SfxHandle(ch);
     }
 
     /// <summary>
@@ -384,11 +361,10 @@ public class AudioManager : SingletonMonoBehaviour<AudioManager>
         float vol = Mathf.Clamp01(volume) * Mathf.Clamp01(baseVol);
         var ch = AcquireChannel(owner);
         if (ch == null) return null;
-        ch.Attach(owner);
         ch.Play(clip, looping: true, volume: vol);
         // Owner 소멸 감시(루프는 재생 끝이 없으므로 핸들이나 Owner 이벤트로 정지해야 함)
         ch.WatchOwnerAndAutoStopAsync(this).Forget();
-        return new SfxHandle(this, ch);
+        return new SfxHandle(ch);
     }
 
     /// <summary>
@@ -417,11 +393,6 @@ public class AudioManager : SingletonMonoBehaviour<AudioManager>
             }
         }
     }
-
-    internal void Release(SfxChannel ch)
-    {
-        ReleaseChannel(ch);
-    }
     #endregion 핸들/채널 기반 API
 
     #region SFX 채널/핸들 시스템
@@ -431,18 +402,15 @@ public class AudioManager : SingletonMonoBehaviour<AudioManager>
     /// </summary>
     public sealed class SfxHandle
     {
-        private readonly AudioManager _am;
-
         internal readonly SfxChannel Channel;
 
         /// <summary>
         /// 내부용 생성자. AudioManager와 채널을 바인딩한다.
         /// </summary>
-        /// <param name="am">핸들을 생성한 AudioManager</param>
         /// <param name="ch">연결할 재생 채널</param>
-        internal SfxHandle(AudioManager am, SfxChannel ch)
+        internal SfxHandle(SfxChannel ch)
         {
-            _am = am; Channel = ch;
+            Channel = ch;
         }
 
         /// <summary>
@@ -486,11 +454,6 @@ public class AudioManager : SingletonMonoBehaviour<AudioManager>
         public Transform Owner { get; set; }
 
         /// <summary>
-        /// 카탈로그에서 재생한 키(디버그/추적용). 수동 재생 시 null일 수 있음.
-        /// </summary>
-        public string Key { get; set; }
-
-        /// <summary>
         /// 마지막 사용(상태 갱신/재생/정지) 시각(Time.unscaledTime 기준).
         /// </summary>
         public float LastUseTime { get; private set; }
@@ -506,7 +469,6 @@ public class AudioManager : SingletonMonoBehaviour<AudioManager>
             InUse = false;
             Looping = false;
             Owner = null;
-            Key = null;
             LastUseTime = Time.unscaledTime;
         }
 
@@ -524,20 +486,11 @@ public class AudioManager : SingletonMonoBehaviour<AudioManager>
             InUse = false;
             Looping = false;
             Owner = null;
-            Key = null;
             LastUseTime = Time.unscaledTime;
-            _cts?.Cancel();
-            _cts?.Dispose();
-            _cts = null;
+            AudioManager.CancelAndClearCts(ref _cts);
         }
 
-        /// <summary>
-        /// 채널을 특정 소유자 Transform에 연결한다. Owner 생명주기 감시에 사용된다.
-        /// </summary>
-        public void Attach(Transform owner)
-        {
-            Owner = owner;
-        }
+        
 
         /// <summary>
         /// 지정한 클립을 재생한다.
@@ -561,23 +514,12 @@ public class AudioManager : SingletonMonoBehaviour<AudioManager>
         public async UniTaskVoid StopAsync(float fadeOutSeconds)
         {
             if (!InUse) { ForceStopImmediate(); return; }
-            _cts?.Cancel();
-            _cts?.Dispose();
-            _cts = new CancellationTokenSource();
-            var ct = _cts.Token;
+            var ct = AudioManager.RenewCts(ref _cts);
             float dur = Mathf.Max(0f, fadeOutSeconds);
             if (dur > 0f && Source != null)
             {
                 float from = Source.volume;
-                float t = 0f;
-                while (t < dur)
-                {
-                    if (ct.IsCancellationRequested) break;
-                    t += Time.unscaledDeltaTime;
-                    float k = Mathf.Clamp01(t / dur);
-                    Source.volume = Mathf.Lerp(from, 0f, k);
-                    await UniTask.Yield(PlayerLoopTiming.Update, ct);
-                }
+                await AudioManager.FadeVolumeAsync(Source, from, 0f, dur, ct);
             }
             ForceStopImmediate();
         }
@@ -593,9 +535,7 @@ public class AudioManager : SingletonMonoBehaviour<AudioManager>
             Source.clip = null;
             Source.loop = false;
             Source.volume = _baseVolume;
-            _cts?.Cancel();
-            _cts?.Dispose();
-            _cts = null;
+            AudioManager.CancelAndClearCts(ref _cts);
             LastUseTime = Time.unscaledTime;
         }
 
@@ -606,9 +546,7 @@ public class AudioManager : SingletonMonoBehaviour<AudioManager>
         public async UniTaskVoid WatchAndReleaseAsync(AudioManager am)
         {
             // 단발 감시: 재생 종료 시 채널 반환
-            _cts?.Cancel();
-            _cts = new CancellationTokenSource();
-            var ct = _cts.Token;
+            var ct = AudioManager.RenewCts(ref _cts);
             try
             {
                 while (!ct.IsCancellationRequested)
@@ -624,7 +562,7 @@ public class AudioManager : SingletonMonoBehaviour<AudioManager>
             catch { }
             finally
             {
-                am.Release(this);
+                ResetState();
             }
         }
 
@@ -635,9 +573,7 @@ public class AudioManager : SingletonMonoBehaviour<AudioManager>
         public async UniTaskVoid WatchOwnerAndAutoStopAsync(AudioManager am)
         {
             // 루프 감시: Owner가 사라지면 자동 정지
-            _cts?.Cancel();
-            _cts = new CancellationTokenSource();
-            var ct = _cts.Token;
+            var ct = AudioManager.RenewCts(ref _cts);
             try
             {
                 while (!ct.IsCancellationRequested)
@@ -650,8 +586,7 @@ public class AudioManager : SingletonMonoBehaviour<AudioManager>
             catch { }
             finally
             {
-                StopAsync(0.03f).Forget();
-                am.Release(this);
+                ResetState();
             }
         }
 
@@ -660,9 +595,7 @@ public class AudioManager : SingletonMonoBehaviour<AudioManager>
         /// </summary>
         public void Dispose()
         {
-            _cts?.Cancel();
-            _cts?.Dispose();
-            _cts = null;
+            AudioManager.CancelAndClearCts(ref _cts);
             if (Source != null)
             {
                 try { UnityEngine.Object.Destroy(Source); } catch { }
@@ -681,7 +614,7 @@ public class AudioManager : SingletonMonoBehaviour<AudioManager>
             _channels.Add(CreateChannel());
         }
         // 음소거 상태 반영
-        ApplyMuteToChannels();
+        ApplyMuteToAll();
     }
 
     private SfxChannel CreateChannel()
@@ -694,14 +627,34 @@ public class AudioManager : SingletonMonoBehaviour<AudioManager>
         return new SfxChannel(src);
     }
 
-    private void ApplyMuteToChannels()
+    private void ApplyMuteToAll()
     {
+        // 소스 및 채널에 일괄 적용
+        if (bgmSource != null) bgmSource.mute = _muted;
+        if (sfxSource != null) sfxSource.mute = _muted;
         for (int i = 0; i < _channels.Count; i++)
         {
             var ch = _channels[i];
             if (ch == null) continue;
             ch.Source.mute = _muted;
         }
+    }
+
+    // CTS를 취소/폐기하고 새로 생성하여 토큰을 반환한다.
+    private static CancellationToken RenewCts(ref CancellationTokenSource cts)
+    {
+        cts?.Cancel();
+        cts?.Dispose();
+        cts = new CancellationTokenSource();
+        return cts.Token;
+    }
+
+    // CTS를 취소/폐기하고 null로 설정한다.
+    private static void CancelAndClearCts(ref CancellationTokenSource cts)
+    {
+        cts?.Cancel();
+        cts?.Dispose();
+        cts = null;
     }
 
     private SfxChannel AcquireChannel(Transform owner)
@@ -740,18 +693,11 @@ public class AudioManager : SingletonMonoBehaviour<AudioManager>
         }
         if (candidate != null)
         {
-            candidate.ForceStopImmediate();
             candidate.ResetState();
             candidate.Owner = owner;
             return candidate;
         }
         return null;
-    }
-
-    private void ReleaseChannel(SfxChannel ch)
-    {
-        if (ch == null) return;
-        ch.ResetState();
     }
 
     # endregion SFX 채널/핸들 시스템
