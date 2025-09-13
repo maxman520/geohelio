@@ -291,9 +291,15 @@
 2025-09-13 19:52 | chore | 불필요 using 제거 — UnityEngine.Rendering 정리 | Assets/Scripts/Game/ShootingStar.cs
 2025-09-13 19:52 | refactor | 불필요 필드 정리 — speedRange/\_pathLength 제거(경로 길이 기반 이동으로 대체) | Assets/Scripts/Game/ShootingStar.cs
 
-<!-- COMMIT_BOOKMARK -->
 
 2025-09-13 20:00 | refactor | GameManager 참조 보장 일원화 — EnsureReferences 도입, ToReady에서 호출하고 Start의 중복 바인딩 제거, Update 내 스포너 탐색 제거 | Assets/Scripts/Game/GameManager.cs
 2025-09-13 20:08 | refactor | 재시작 로직 공통화 — SoftRestartAsync/RestartToReadyAsync 공통 메서드로 합치고 두 공개 API에서 호출 | Assets/Scripts/Game/GameManager.cs
 2025-09-13 20:08 | refactor | SFX 키 상수화 — GameOver 문자열을 GameConstants.SFX.GameOver로 통일 | Assets/Scripts/Game/GameManager.cs
 2025-09-13 20:18 | docs | GameManager 공개 메서드 Summary 추가(ToReady/StartGame/PauseGame/ResumeGame/EndGame/RestartAsync/SetDoubleScoreActive/SetRadiusDecaySuppressed/LockPlayerDistance/UnlockPlayerDistance) | Assets/Scripts/Game/GameManager.cs
+
+<!-- COMMIT_BOOKMARK -->
+2025-09-13 23:34 | refactor | 재시작/광고 집계 로직 UIManager로 일원화 및 중복 호출 제거 | Assets/Scripts/UI/UIManager.cs,Assets/Scripts/UI/TopLeftButtons.cs,Assets/Scripts/UI/GameOverPanel.cs
+2025-09-13 23:34 | refactor | 아이콘 갱신 유틸 메서드 추출(SetToggleIcon) 및 적용 | Assets/Scripts/UI/TopLeftButtons.cs
+2025-09-13 23:52 | refactor | Restart 버튼 활성화 로직 인라인화(SetRestartInteractable 제거) | Assets/Scripts/UI/TopLeftButtons.cs
+2025-09-13 23:52 | refactor | OnClickRestart 폴백 로직 단순화(UIManager 미존재 경고 추가, GameManager 재탐색 제거) | Assets/Scripts/UI/TopLeftButtons.cs
+2025-09-13 23:52 | docs | 클래스 Summary 정정 및 경고 메시지 표현 보정(DataManager 설정 아이콘 초기화 경고) | Assets/Scripts/UI/TopLeftButtons.cs

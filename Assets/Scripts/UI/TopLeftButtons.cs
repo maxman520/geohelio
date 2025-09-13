@@ -5,7 +5,6 @@ using UnityEngine.Serialization;
 
 /// <summary>
 /// 화면 상단 왼쪽의 3개 버튼(오디오 토글, 진동 토글, 재시작)을 관리하는 스크립트.
-/// - 오디오/진동 토글의 로직은 비워 둔다.
 /// - 재시작 버튼은 "게임 시작 전" 상태(Ready)로 되돌린다.
 /// - 재시작 버튼은 게임이 시작된 뒤(Playing)부터 활성화한다.
 /// </summary>
@@ -60,9 +59,12 @@ public class TopLeftButtons : MonoBehaviour
             else
             {
                 Debug.LogWarning("[TopLeftButtons] GameManager를 찾지 못했습니다. 재시작 버튼 상태 제어가 비활성화됩니다.");
-                SetRestartInteractable(false);
+                
+                if (restartButton != null)
+                    restartButton.interactable = false;
             }
         }
+
         // DataManager 구독 및 오디오/진동 아이콘 초기 반영
         var dm = DataManager.Instance;
         if (dm != null)
@@ -74,7 +76,7 @@ public class TopLeftButtons : MonoBehaviour
         }
         else
         {
-            Debug.LogWarning("[TopLeftButtons] DataManager를 찾지 못했습니다. 진동 아이콘 초기화가 제한됩니다.");
+            Debug.LogWarning("[TopLeftButtons] DataManager를 찾지 못했습니다. 설정 아이콘 초기화가 제한됩니다.");
         }
     }
 
@@ -97,17 +99,11 @@ public class TopLeftButtons : MonoBehaviour
     {
         // 요구사항: 재시작 버튼은 게임 시작 후(Playing 상태)에만 활성화
         bool canRestart = state == GameManager.GameState.Playing;
-        SetRestartInteractable(canRestart);
-    }
 
-    private void SetRestartInteractable(bool interactable)
-    {
         if (restartButton != null)
-        {
-            restartButton.interactable = interactable;
-        }
+            restartButton.interactable = canRestart;
     }
-#region Audio
+    #region Audio
     // 오디오 토글
     private void OnClickAudioToggle()
     {
@@ -126,28 +122,12 @@ public class TopLeftButtons : MonoBehaviour
 
     private void RefreshAudioIcon(bool muted)
     {
-        // 아이콘 참조가 없으면 버튼의 Image로 대체
-        if (audioIcon == null && audioToggleButton != null)
-        {
-            audioIcon = audioToggleButton.image;
-        }
-        if (audioIcon == null) return;
-
-        // 스프라이트가 모두 설정된 경우 스프라이트 전환, 아니면 색상으로 대체 표현
-        if (audioOnSprite != null && audioOffSprite != null)
-        {
-            audioIcon.sprite = muted ? audioOffSprite : audioOnSprite;
-        }
-        else
-        {
-            var c = audioIcon.color;
-            c.a = muted ? 0.5f : 1f; // 음소거 시 반투명 처리
-            audioIcon.color = c;
-        }
+        // 공통 유틸을 사용하여 음소거(false: ON) 기준으로 아이콘 갱신
+        SetToggleIcon(ref audioIcon, audioToggleButton, !muted, audioOnSprite, audioOffSprite);
     }
-#endregion Audio
+    #endregion Audio
 
-#region Vibration
+    #region Vibration
     // 진동 토글
     private void OnClickVibrationToggle()
     {
@@ -179,24 +159,8 @@ public class TopLeftButtons : MonoBehaviour
     // 진동 On/Off 변경 시 아이콘 갱신
     private void RefreshVibrationIcon(bool enabled)
     {
-        // 아이콘 참조가 없으면 버튼의 Image로 대체
-        if (vibrationIcon == null && vibrationToggleButton != null)
-        {
-            vibrationIcon = vibrationToggleButton.image;
-        }
-        if (vibrationIcon == null) return;
-
-        // 스프라이트가 모두 설정된 경우 스프라이트 전환, 아니면 색상으로 대체 표현
-        if (vibrationOnSprite != null && vibrationOffSprite != null)
-        {
-            vibrationIcon.sprite = enabled ? vibrationOnSprite : vibrationOffSprite;
-        }
-        else
-        {
-            var c = vibrationIcon.color;
-            c.a = enabled ? 1f : 0.5f; // OFF 시 반투명 처리
-            vibrationIcon.color = c;
-        }
+        // 공통 유틸을 사용하여 진동 ON/OFF 아이콘 갱신
+        SetToggleIcon(ref vibrationIcon, vibrationToggleButton, enabled, vibrationOnSprite, vibrationOffSprite);
     }
     #endregion Vibration
 
@@ -209,33 +173,55 @@ public class TopLeftButtons : MonoBehaviour
             // DataManager 값을 단일 소스로 사용해 아이콘을 갱신한다.
             RefreshVibrationIcon(dm.VibrationEnabled);
             RefreshAudioIcon(dm.Muted);
-            return;
         }
-
-        return;
     }
 
     // 재시작: Ready 상태로 되돌림(즉시 시작하지 않음)
     private void OnClickRestart()
     {
-        if (_gm == null)
+        // 재시작/광고 집계는 UIManager로 일원화
+        var ui = UIManager.Instance;
+        if (ui != null)
         {
-            _gm = GameManager.Instance != null ? GameManager.Instance : FindFirstObjectByType<GameManager>();
+            ui.RequestRetry();
+            return;
         }
+        else
+        {
+            Debug.LogWarning("[TopLeftButtons] UIManager 인스턴스가 없어 GameManager로 처리합니다.");
+        }
+
+        // 예외적으로 UIManager가 없는 경우에 한해 GameManager로 직접 처리(광고 집계는 생략)
         if (_gm != null)
         {
-            // 게임 시작 전 상태(Ready)로만 복귀
             _gm.RestartAsync().Forget();
-
-            // 전면 광고 집계 알림(3회마다 노출 정책)
-            if (AdsManager.Instance != null)
-            {
-                AdsManager.Instance.NotifyRestartLikeClickAsync().Forget();
-            }
         }
         else
         {
             Debug.LogWarning("[TopLeftButtons] GameManager 인스턴스가 없어 재시작을 수행할 수 없습니다.");
+        }
+    }
+
+    // ON/OFF 아이콘 공통 갱신 유틸 — 아이콘 참조 보정, 스프라이트 전환 또는 알파 대체
+    private static void SetToggleIcon(ref Image icon, Button fallbackButton, bool isOn, Sprite onSprite, Sprite offSprite)
+    {
+        // 아이콘 참조가 없으면 버튼의 Image로 대체
+        if (icon == null && fallbackButton != null)
+        {
+            icon = fallbackButton.image;
+        }
+        if (icon == null) return;
+
+        // 스프라이트가 모두 설정된 경우 스프라이트 전환, 아니면 색상 알파로 대체 표현
+        if (onSprite != null && offSprite != null)
+        {
+            icon.sprite = isOn ? onSprite : offSprite;
+        }
+        else
+        {
+            var c = icon.color;
+            c.a = isOn ? 1f : 0.5f;
+            icon.color = c;
         }
     }
 }

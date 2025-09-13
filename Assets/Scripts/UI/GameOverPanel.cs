@@ -22,7 +22,9 @@ public class GameOverPanel : MonoBehaviour
         }
     }
 
-    // 점수와 함께 패널 표시
+    /// <summary>
+    /// 점수와 함께 패널 표시
+    /// </summary>
     public void Show(int finalScore)
     {
         if (root != null) root.SetActive(true);
@@ -41,7 +43,9 @@ public class GameOverPanel : MonoBehaviour
         }
     }
 
-    // 패널 숨김
+    /// <summary>
+    /// 패널 숨김
+    /// </summary>
     public void Hide()
     {
         if (root != null) root.SetActive(false);
@@ -50,15 +54,9 @@ public class GameOverPanel : MonoBehaviour
     // 다시하기 버튼 클릭 처리: UIManager에 재시작 요청
     private void OnClickRetry()
     {
-        AudioManager.Instance.PlaySfx("OnClickBtn");
+        AudioManager.Instance.PlaySfx(GameConstants.SFX.OnClickBtn);
         var ui = UIManager.Instance;
         if (ui != null) ui.RequestRetry();
-
-        // 전면 광고 집계 알림(3회마다 노출 정책)
-        if (AdsManager.Instance != null)
-        {
-            AdsManager.Instance.NotifyRestartLikeClickAsync().Forget();
-        }
     }
 
     // 최고 점수 텍스트를 천 단위 구분 기호와 함께 갱신
