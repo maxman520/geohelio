@@ -95,11 +95,11 @@ public class ShootingStar : MonoBehaviour
     public void Launch(Vector3 start, Vector3 end, Vector3 passPoint, float speed)
     {
         _start = start; _end = end;
-        // 슈팅스타 이동 속도를 스포너의 spawnRadius로 고정한다.
+        // 슈팅스타 이동 속도를 플레이어의 GameOverRadius로 고정한다.
         // 스포너 참조가 없을 경우에는 기존 로직(입력값/범위 랜덤)을 폴백으로 사용한다.
         if (_spawner != null)
         {
-            float r = _spawner.GetSpawnRadius();
+            float r = _spawner.GetGameOverRadius();
             _speed = Mathf.Max(0.1f, r);
         }
         else

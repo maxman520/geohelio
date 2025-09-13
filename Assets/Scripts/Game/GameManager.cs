@@ -493,7 +493,7 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
         await UniTask.Yield(PlayerLoopTiming.Update);
     }
 
-    // 회전 중심이 스폰 영역을 벗어났는지 확인하여 필요 시 게임오버 처리
+    // 회전 중심이 게임 오버 경계를 벗어났는지 확인하여 필요 시 게임오버 처리
     private void CheckCenterBoundsAndMaybeGameOver()
     {
         if (!gameOverWhenCenterOut) return;
@@ -507,7 +507,7 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
         float baseRadius = 0f;
         if (objectSpawner != null)
         {
-            baseRadius = objectSpawner.GetSpawnRadius();
+            baseRadius = objectSpawner.GetGameOverRadius();
         }
         else
         {

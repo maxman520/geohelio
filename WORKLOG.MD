@@ -268,6 +268,10 @@
 2025-09-13 14:46 | refactor | ObjectSpawner 중복 로직 공통화(궤도 금지/최소 간격/스폰 시도 루프/CTS 해제) | Assets/Scripts/Game/ObjectSpawner.cs
 2025-09-13 14:53 | refactor | 블랙홀 디스폰 연출 책임을 BlackHole 컴포넌트로 이관(ObjectSpawner에서는 요청만 수행) | Assets/Scripts/Game/ObjectSpawner.cs,Assets/Scripts/Game/BlackHole.cs
 
-<!-- COMMIT_BOOKMARK -->
 2025-09-13 15:09 | refactor | 이벤트 구독 위치 단일화(ObjectSpawner: Awake 참조 캐시, Initialize 구독/OnDestroy 해지) | Assets/Scripts/Game/ObjectSpawner.cs
 2025-09-13 15:12 | refactor | 미사용 필드 제거 및 NotifyDestroyed 제거(풀 반환/주기 정리로 일관 처리) | Assets/Scripts/Game/ObjectSpawner.cs
+2025-09-13 15:18 | docs | ObjectSpawner 개요/요약 문서 추가(구조/흐름/튜닝 포인트 정리) | OBJECT_SPAWNER_OVERVIEW.md
+
+<!-- COMMIT_BOOKMARK -->
+
+2025-09-13 16:25 | refactor | GameOverRadius 도입 및 참조 일원화(GameManager/Visualizer/ShootingStar), ObjectSpawner 네이밍/헬퍼 정리, region에 따라 코드 내 메소드 위치 정리 | Assets/Scripts/Game/ObjectSpawner.cs,Assets/Scripts/Game/GameManager.cs,Assets/Scripts/Game/GameOverBoundaryVisualizer.cs,Assets/Scripts/Game/ShootingStar.cs

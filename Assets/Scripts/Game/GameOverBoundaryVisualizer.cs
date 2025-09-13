@@ -118,11 +118,11 @@ public class GameOverBoundaryVisualizer : MonoBehaviour
 
     private float GetBoundaryRadius()
     {
-        // 런타임: 스포너의 런타임 반경(GetSpawnRadiusWorld) 경로와 일치시킴
+        // 런타임: 스포너의 런타임 반경(GameOverRadius) 경로와 일치시킴
         if (Application.isPlaying)
         {
             if (spawner != null)
-                return Mathf.Max(0f, spawner.GetSpawnRadius());
+                return Mathf.Max(0f, spawner.GetGameOverRadius());
 
             // 스포너가 없을 때는 카메라 기반 계산
             var camRun = Camera.main != null ? Camera.main : FindFirstObjectByType<Camera>();
@@ -150,7 +150,7 @@ public class GameOverBoundaryVisualizer : MonoBehaviour
 
         // 그래도 실패하면 스포너 값(설정값) 사용, 마지막 폴백은 상수
         if (spawner != null)
-            return Mathf.Max(0f, spawner.GetSpawnRadius());
+            return Mathf.Max(0f, spawner.GetGameOverRadius());
         return 6f;
     }
 

@@ -81,7 +81,7 @@ public class Asteroid : MonoBehaviour
             transform.position = p;
 
             // 디스폰 경계를 넘어가면 풀로 반환
-            if (_spawner != null && _spawner.IsOutsideDespawnBounds(transform.position))
+            if (_spawner != null && _spawner.IsOutsideDespawnRadius(transform.position))
             {
                 _spawner.Despawn(transform);
                 return;
