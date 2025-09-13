@@ -272,6 +272,11 @@
 2025-09-13 15:12 | refactor | 미사용 필드 제거 및 NotifyDestroyed 제거(풀 반환/주기 정리로 일관 처리) | Assets/Scripts/Game/ObjectSpawner.cs
 2025-09-13 15:18 | docs | ObjectSpawner 개요/요약 문서 추가(구조/흐름/튜닝 포인트 정리) | OBJECT_SPAWNER_OVERVIEW.md
 
+2025-09-13 16:25 | refactor | GameOverRadius 도입 및 참조 일원화(GameManager/Visualizer/ShootingStar), ObjectSpawner 네이밍/헬퍼 정리, region에 따라 코드 내 메소드 위치 정리 | Assets/Scripts/Game/ObjectSpawner.cs,Assets/Scripts/Game/GameManager.cs,Assets/Scripts/Game/GameOverBoundaryVisualizer.cs,Assets/Scripts/Game/ShootingStar.cs
+
 <!-- COMMIT_BOOKMARK -->
 
-2025-09-13 16:25 | refactor | GameOverRadius 도입 및 참조 일원화(GameManager/Visualizer/ShootingStar), ObjectSpawner 네이밍/헬퍼 정리, region에 따라 코드 내 메소드 위치 정리 | Assets/Scripts/Game/ObjectSpawner.cs,Assets/Scripts/Game/GameManager.cs,Assets/Scripts/Game/GameOverBoundaryVisualizer.cs,Assets/Scripts/Game/ShootingStar.cs
+2025-09-13 18:45 | refactor | 슈팅스타 이동 경로 선택 로직 리팩터링(좌우대칭 2차곡선·공전범위 교차 검사·kMaxTry 반복) | Assets/Scripts/Game/ObjectSpawner.cs
+2025-09-13 18:50 | refactor | ComputePassPoint를 법선 기반(플레이어 방향 선택)으로 변경 — 중점에서 플레이어 방향 법선으로 절댓값 오프셋 적용 | Assets/Scripts/Game/ObjectSpawner.cs
+2025-09-13 18:58 | refactor | shootingPassOffsetRange 제거 대응 — ComputePassPoint 내부에서 랜덤 오프셋 크기 생성하도록 변경 | Assets/Scripts/Game/ObjectSpawner.cs
+2025-09-13 19:05 | refactor | ObjectSpawner 불필요/미사용 로직 정리(OnDrawGizmos 내 미사용 변수 제거, GetDespawnRect 이중 검사 정리) | Assets/Scripts/Game/ObjectSpawner.cs

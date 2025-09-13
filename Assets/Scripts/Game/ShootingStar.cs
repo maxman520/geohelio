@@ -95,17 +95,7 @@ public class ShootingStar : MonoBehaviour
     public void Launch(Vector3 start, Vector3 end, Vector3 passPoint, float speed)
     {
         _start = start; _end = end;
-        // 슈팅스타 이동 속도를 플레이어의 GameOverRadius로 고정한다.
-        // 스포너 참조가 없을 경우에는 기존 로직(입력값/범위 랜덤)을 폴백으로 사용한다.
-        if (_spawner != null)
-        {
-            float r = _spawner.GetGameOverRadius();
-            _speed = Mathf.Max(0.1f, r);
-        }
-        else
-        {
-            _speed = (speed > 0f) ? speed : Mathf.Max(0.1f, Random.Range(speedRange.x, speedRange.y));
-        }
+
         _pathLength = Mathf.Max(0.001f, Vector3.Distance(_start, _end));
 
         // 제어점 산출: B(0.5) = passPoint 조건으로 2차 베지어 제어점 계산
@@ -207,7 +197,7 @@ public class ShootingStar : MonoBehaviour
     /// </summary>
     private void BuildFullTrajectory()
     {
-        const int kSegments = 20; // 간단한 샘플 수(이해/성능 균형)
+        const int kSegments = 20; // 간단한 샘플 수
         if (_trajPoints == null || _trajPoints.Length != (kSegments + 1))
             _trajPoints = new Vector3[kSegments + 1];
 
@@ -263,10 +253,8 @@ public class ShootingStar : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// 진행도 u에 맞춰 [0..u] 구간 알파=0, (u..1] 구간 알파=1로 설정하여
-    /// 앞부분을 "지워나가는" 느낌을 만든다.
-    /// </summary>
+    // 진행도 u에 맞춰 [0..u] 구간 알파=0, (u..1] 구간 알파=1로 설정하여
+    // 앞부분을 "지워나가는" 느낌을 만든다.
     private void UpdateTrajectoryEraseByAlpha(float u)
     {
         if (trajectory == null || trajectory.positionCount <= 0) return;
