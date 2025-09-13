@@ -265,5 +265,7 @@
 2025-09-12 23:38 | refactor | ObjectSpawner 직렬화 필드 일부를 내부 상태 필드로 전환하고 반경/카운트 필드 접두어 통일, 플레이어 중심 전환 이벤트 구독 추가 및 태그 기반 정리 제거 | Assets/Scripts/Game/ObjectSpawner.cs
 2025-09-12 23:50 | docs | ObjectSpawner 코드 리뷰 초안 작성(중복/과설계/단순화 관점) | REVIEW_ObjectSpawner_Audit.md
 
-<!-- COMMIT_BOOKMARK -->
 2025-09-13 14:46 | refactor | ObjectSpawner 중복 로직 공통화(궤도 금지/최소 간격/스폰 시도 루프/CTS 해제) | Assets/Scripts/Game/ObjectSpawner.cs
+2025-09-13 14:53 | refactor | 블랙홀 디스폰 연출 책임을 BlackHole 컴포넌트로 이관(ObjectSpawner에서는 요청만 수행) | Assets/Scripts/Game/ObjectSpawner.cs,Assets/Scripts/Game/BlackHole.cs
+
+<!-- COMMIT_BOOKMARK -->

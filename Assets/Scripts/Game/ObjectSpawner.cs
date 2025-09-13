@@ -651,87 +651,24 @@ public class ObjectSpawner : MonoBehaviour
     private void DespawnBlackHoleNow()
     {
         if (_activeBlackHole == null) return;
+
         var go = _activeBlackHole;
         _activeBlackHole = null; // 다음 스폰을 막지 않기 위해 즉시 해제
-        PlayBlackHoleDespawnAndDestroyAsync(go).Forget();
-    }
-
-    // 블랙홀 디스폰 애니메이션을 재생하고 끝난 후 파괴한다.
-    private async UniTaskVoid PlayBlackHoleDespawnAndDestroyAsync(GameObject go)
-    {
         if (go == null) return;
 
-        var animator = go.GetComponentInChildren<Animator>();
-        if (animator == null)
+
+        var bh = go.GetComponent<BlackHole>();
+        if (bh != null)
         {
-            // 애니메이터가 없으면 즉시 파괴
-            Destroy(go);
+            // 블랙홀 컴포넌트에 디스폰 연출 및 파괴를 위임
+            bh.DespawnAndDestroyAsync().Forget();
             return;
         }
-
-        // 트리거 발화
-        try
-        {
-            animator.ResetTrigger(GameConstants.Anim.BlackHoleDespawnTrigger);
-            animator.SetTrigger(GameConstants.Anim.BlackHoleDespawnTrigger);
-        }
-        catch
-        {
-            // 트리거 세팅 실패 시에도 안전하게 파괴하도록 폴백
-            Destroy(go);
-            return;
-        }
-
-        // 한 프레임 대기하여 전이 시작을 보장
-        await UniTask.Yield(PlayerLoopTiming.Update);
-
-        float timeout = 5f; // 안전 타임아웃
-        float elapsed = 0f;
-        bool inDespawn = false;
-
-        // 가능하면 Despawn 태그 상태 진입을 기다림
-        for (int i = 0; i < 180; i++) // 최대 약 3초 시도
-        {
-            if (animator == null) break;
-            var st = animator.GetCurrentAnimatorStateInfo(0);
-            if (st.IsTag(GameConstants.Anim.BlackHoleDespawnStateTag))
-            {
-                inDespawn = true;
-                break;
-            }
-            await UniTask.Yield(PlayerLoopTiming.Update);
-        }
-
-        if (animator != null)
-        {
-            if (inDespawn)
-            {
-                // 디스폰 상태가 끝날 때까지 대기
-                while (animator != null)
-                {
-                    var st = animator.GetCurrentAnimatorStateInfo(0);
-                    if (!animator.IsInTransition(0) && st.IsTag(GameConstants.Anim.BlackHoleDespawnStateTag) && st.normalizedTime >= 0.999f)
-                    {
-                        break;
-                    }
-                    elapsed += Time.deltaTime;
-                    if (elapsed > timeout) break;
-                    await UniTask.Yield(PlayerLoopTiming.Update);
-                }
-            }
-            else
-            {
-                // 태그를 알 수 없으면 짧게 대기 후 파괴(폴백)
-                await UniTask.Delay(TimeSpan.FromSeconds(0.5f));
-            }
-        }
-
-        if (go != null)
-        {
-            Destroy(go);
-        }
+        // 컴포넌트가 없으면 즉시 파괴(폴백)
+        Destroy(go);
     }
-    #endregion // 블랙홀
+
+    #endregion 블랙홀
 
     #region 소행성
     // 소행성 한 개 스폰 시도

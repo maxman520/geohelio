@@ -35,6 +35,7 @@ public class BlackHole : MonoBehaviour
     private bool _gameOverTriggered;
     private AudioManager.SfxHandle _pullSfxHandle; // 루프 SFX 핸들
     private ObjectSpawner _spawner;
+    private bool _despawning; // 디스폰 진행 중 여부 가드
 
     private void Awake()
     {
@@ -236,6 +237,84 @@ public class BlackHole : MonoBehaviour
             return true;
 
         return false;
+    }
+
+    /// <summary>
+    /// 외부(스포너 등)에서 디스폰을 요청하면 애니메이터 트리거를 발화하고 연출 종료 후 스스로 파괴한다.
+    /// 스포너는 생성/수명 관리만 하고, 디스폰 연출·파괴는 이 컴포넌트가 책임진다.
+    /// </summary>
+    public async UniTask DespawnAndDestroyAsync(float timeoutSeconds = 5f)
+    {
+        if (_despawning) return; // 중복 호출 방지
+        _despawning = true;
+
+        // 진행 중인 시각 효과/SFX 정리
+        StopPullSfxLoop();
+        CancelFade();
+
+        if (animator == null)
+        {
+            // 애니메이터가 없으면 즉시 파괴
+            if (this != null && gameObject != null)
+                Destroy(gameObject);
+            return;
+        }
+
+        // 애니메이션 트리거 시도
+        try
+        {
+            animator.ResetTrigger(GameConstants.Anim.BlackHoleDespawnTrigger);
+            animator.SetTrigger(GameConstants.Anim.BlackHoleDespawnTrigger);
+        }
+        catch
+        {
+            // 트리거 세팅 실패 시에도 안전하게 파괴
+            if (this != null && gameObject != null)
+                Destroy(gameObject);
+            return;
+        }
+
+        // 애니메이션 전이 시작 보장을 위해 한 프레임 대기
+        await UniTask.Yield(PlayerLoopTiming.Update);
+
+        float timeout = Mathf.Max(0.1f, timeoutSeconds);
+        float elapsed = 0f;
+        bool inDespawn = false;
+
+        // Despawn 태그 상태 진입을 기다림(최대 약 3초 시도)
+        for (int i = 0; i < 180; i++)
+        {
+            if (animator == null) break;
+            var st = animator.GetCurrentAnimatorStateInfo(0);
+            if (st.IsTag(_despawnStateTag))
+            {
+                inDespawn = true;
+                break;
+            }
+            await UniTask.Yield(PlayerLoopTiming.Update);
+        }
+
+        if (inDespawn)
+        {
+            // 디스폰 상태 종료까지 대기(타임아웃 보유)
+            while (animator != null)
+            {
+                var st = animator.GetCurrentAnimatorStateInfo(0);
+                if (!animator.IsInTransition(0) && st.IsTag(_despawnStateTag) && st.normalizedTime >= 0.999f)
+                    break;
+                elapsed += Time.deltaTime;
+                if (elapsed > timeout) break;
+                await UniTask.Yield(PlayerLoopTiming.Update);
+            }
+        }
+        else
+        {
+            // 태그 미확인 시 짧은 대기 후 파괴(폴백)
+            await UniTask.Delay(TimeSpan.FromSeconds(0.5f));
+        }
+
+        if (this != null && gameObject != null)
+            Destroy(gameObject);
     }
 
     // 채널/핸들 기반 흡인 SFX 재생 루프 시작(이미 동작 중이면 무시)
