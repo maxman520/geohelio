@@ -77,7 +77,7 @@ public class ObjectSpawner : MonoBehaviour
     // 내부 진행 상태
     private float _timer;
     private float _obstacleTimer;
-    private float _shootingStarNextAttemptTime = -1f;
+    // (제거됨) _shootingStarNextAttemptTime: 구 로직 잔재
     private bool _running;
     private readonly List<Transform> _spawned = new List<Transform>(); // 관리 중인 소행성 목록
     private readonly List<Transform> _spawnedObstacles = new List<Transform>(); // 장애물 소행성 목록
@@ -103,10 +103,6 @@ public class ObjectSpawner : MonoBehaviour
     {
         // 플레이어 참조(궤도 규칙 적용 시 필요)
         _player = FindFirstObjectByType<PlayerController>();
-        if (_player != null)
-            _player.OnCenterToggled += OnPlayerCenterToggled;
-        else
-            Debug.LogWarning("[ObjectSpawner] PlayerController를 찾지 못했습니다.");
 
         // 메인 카메라 캐시(직교 카메라 가로 절반 길이로 반경 계산)
             _camera = Camera.main != null ? Camera.main : FindFirstObjectByType<Camera>();
@@ -307,7 +303,6 @@ public class ObjectSpawner : MonoBehaviour
         _running = false; // 주기 스폰은 보류
         _timer = 0f;
         _obstacleTimer = 0f;
-        _shootingStarNextAttemptTime = -1f;
         Debug.Log("[ObjectSpawner] 초기화 완료: 초기 배치 생성 후 시작 신호(첫 중심 전환) 대기");
 
         // 블랙홀 루프 정지 및 정리
@@ -469,7 +464,7 @@ public class ObjectSpawner : MonoBehaviour
     {
         // 공통 CTS 해제 헬퍼 사용
         CancelAndDispose(ref _shootingStarCts);
-        _shootingStarNextAttemptTime = -1f; // 타임스탬프 리셋(구 로직과의 호환)
+        // (제거됨) 구 로직 잔재 타임스탬프 리셋 코드
     }
 
     private async UniTaskVoid RunShootingStarLoopAsync(CancellationToken ct, float initialDelaySeconds)
@@ -632,7 +627,7 @@ public class ObjectSpawner : MonoBehaviour
         pos = new Vector3(r.x, r.y, 0f);
 
         // 공전 원 내부 금지(블랙홀은 gap=0 적용)
-        if (IsInsideOrbitForbidden(pos, blackHoleOrbitEpsilon, 0f)) return false;
+        if (IsInsidePlayerOrbit(pos, blackHoleOrbitEpsilon, 0f)) return false;
         return true;
     }
 
@@ -713,7 +708,7 @@ public class ObjectSpawner : MonoBehaviour
         pos = c + new Vector3(rnd.x, rnd.y, 0f);
 
         // 플레이어 공전 원 내부 금지 규칙 적용
-        if (IsInsideOrbitForbidden(pos, orbitEpsilon, orbitGap)) return false;
+        if (IsInsidePlayerOrbit(pos, orbitEpsilon, orbitGap)) return false;
 
         // 장애물 간 최소 간격 3
         if (!IsFarEnoughFrom(_spawnedObstacles, pos, obstacleMinSeparation)) return false;
@@ -755,7 +750,7 @@ public class ObjectSpawner : MonoBehaviour
         pos = c + new Vector3(rnd.x, rnd.y, 0f);
 
         // 규칙 4: 플레이어 공전 원(현재 중심 기준) 내부 금지 — 초기/일반 스폰 모두 적용
-        if (!ignoreOrbitRule && IsInsideOrbitForbidden(pos, orbitEpsilon, orbitGap))
+        if (!ignoreOrbitRule && IsInsidePlayerOrbit(pos, orbitEpsilon, orbitGap))
         {
             return false; // 공전 원 내부는 배치 불가
         }
@@ -826,7 +821,7 @@ public class ObjectSpawner : MonoBehaviour
     }
 
     // 공전 원 내부 금지 판정: 현재 플레이어 중심 기준으로 pos가 플레이어 반경 내부인지 확인한다.
-    private bool IsInsideOrbitForbidden(Vector3 pos, float epsilon, float gap)
+    private bool IsInsidePlayerOrbit(Vector3 pos, float epsilon, float gap)
     {
         if (_player == null || _player.CurrentCenter == null) return false;
         Vector3 oc = _player.CurrentCenter.position; oc.z = 0f;
@@ -1047,13 +1042,7 @@ public class ObjectSpawner : MonoBehaviour
     private void CleanupObstacleList() => CleanNulls(_spawnedObstacles);
     private void CleanupShootingList() => CleanNulls(_spawnedShootingStars);
 
-    // 소행성이 파괴될 때: 목록에서 제거
-    public void NotifyDestroyed(Transform tr)
-    {
-        if (tr == null) return;
-        _spawned.Remove(tr);
-        _spawnedObstacles.Remove(tr);
-    }
+    // (제거됨) NotifyDestroyed: 실제 파괴 알림 훅은 유지하지 않음(풀 반환/주기 정리로 일관 처리)
 
     // 외부(소행성)에서 종료 요청: 풀로 반환
     public void Despawn(Transform tr)

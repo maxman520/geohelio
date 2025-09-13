@@ -269,3 +269,5 @@
 2025-09-13 14:53 | refactor | 블랙홀 디스폰 연출 책임을 BlackHole 컴포넌트로 이관(ObjectSpawner에서는 요청만 수행) | Assets/Scripts/Game/ObjectSpawner.cs,Assets/Scripts/Game/BlackHole.cs
 
 <!-- COMMIT_BOOKMARK -->
+2025-09-13 15:09 | refactor | 이벤트 구독 위치 단일화(ObjectSpawner: Awake 참조 캐시, Initialize 구독/OnDestroy 해지) | Assets/Scripts/Game/ObjectSpawner.cs
+2025-09-13 15:12 | refactor | 미사용 필드 제거 및 NotifyDestroyed 제거(풀 반환/주기 정리로 일관 처리) | Assets/Scripts/Game/ObjectSpawner.cs
