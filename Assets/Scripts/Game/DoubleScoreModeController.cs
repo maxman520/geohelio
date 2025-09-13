@@ -5,7 +5,7 @@ using UnityEngine;
 
 /// <summary>
 /// 더블 스코어 모드 컨트롤러
-/// - 라운드당 1회, 지정 시간 동안 점수 보너스 증가, 거리 고정, 감쇠 중지, 오빗 속도 상향을 적용한다.
+/// - 라운드당 1회, 지정 시간 동안 점수 보너스 증가, 거리 고정, 감쇠 중지, 공전 속도 상향을 적용한다.
 /// - UI(DoubleScorePanel)와 연동하여 게이지 표시/남은 시간 바를 갱신한다.
 /// </summary>
 public class DoubleScoreModeController : MonoBehaviour
@@ -13,7 +13,7 @@ public class DoubleScoreModeController : MonoBehaviour
     [Header("설정")]
     [SerializeField] private float durationSeconds = 10f;     // 지속 시간(초)
     [SerializeField] private float fixedDistance = 3f;        // 모드 중 고정 거리
-    [SerializeField] private float overrideOrbitSpeed = 180f; // 모드 중 오빗 속도
+    [SerializeField] private float overrideOrbitSpeed = 180f; // 모드 중 공전 속도
 
     [Header("참조(자동 탐색 가능)")]
     [SerializeField] private GameManager gameManager;

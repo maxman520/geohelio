@@ -467,12 +467,8 @@ public class ObjectSpawner : MonoBehaviour
 
     private void StopShootingStarLoop()
     {
-        if (_shootingStarCts != null)
-        {
-            _shootingStarCts.Cancel();
-            _shootingStarCts.Dispose();
-            _shootingStarCts = null;
-        }
+        // 공통 CTS 해제 헬퍼 사용
+        CancelAndDispose(ref _shootingStarCts);
         _shootingStarNextAttemptTime = -1f; // 타임스탬프 리셋(구 로직과의 호환)
     }
 
@@ -577,12 +573,8 @@ public class ObjectSpawner : MonoBehaviour
 
     private void StopBlackHoleLoop(bool despawn)
     {
-        if (_blackHoleCts != null)
-        {
-            _blackHoleCts.Cancel();
-            _blackHoleCts.Dispose();
-            _blackHoleCts = null;
-        }
+        // 공통 CTS 해제 헬퍼 사용
+        CancelAndDispose(ref _blackHoleCts);
         if (despawn)
         {
             // 디스폰 시 애니메이션(트리거: despawn)을 먼저 재생 후 파괴
@@ -639,19 +631,8 @@ public class ObjectSpawner : MonoBehaviour
         Vector2 r = Random.insideUnitCircle * Mathf.Max(0f, _blackHoleSpawnRadius);
         pos = new Vector3(r.x, r.y, 0f);
 
-        // 플레이어 공전 원 내부 금지(현재 중심 기준)
-        if (_player != null && _player.CurrentCenter != null)
-        {
-            Vector3 center = _player.CurrentCenter.position; center.z = 0f;
-            float orbitR = Mathf.Max(0f, _player.Distance);
-            float or2 = (orbitR - Mathf.Max(0f, blackHoleOrbitEpsilon));
-            or2 = or2 * or2;
-            float d2 = (pos - center).sqrMagnitude;
-            if (d2 < or2)
-            {
-                return false; // 공전 원 내부 금지
-            }
-        }
+        // 공전 원 내부 금지(블랙홀은 gap=0 적용)
+        if (IsInsideOrbitForbidden(pos, blackHoleOrbitEpsilon, 0f)) return false;
         return true;
     }
 
@@ -762,14 +743,9 @@ public class ObjectSpawner : MonoBehaviour
 
         // 유효 위치 탐색(최대 시도 횟수 제한)
         const int kMaxTries = 24;
-        for (int t = 0; t < kMaxTries; t++)
-        {
-            if (TryGetSpawnPosition(ignoreOrbitRule, out Vector3 pos))
-            {
-                SpawnAt(pos);
-                return;
-            }
-        }
+        TrySpawnWith(kMaxTries,
+            tryGetPos: (out Vector3 p) => TryGetSpawnPosition(ignoreOrbitRule, out p),
+            spawnAt: SpawnAt);
         // 유효 위치를 찾지 못한 경우(드문 상황)
     }
 
@@ -784,14 +760,9 @@ public class ObjectSpawner : MonoBehaviour
         if (_spawnedObstacles.Count >= maxObstacles) return;
 
         const int kMaxTries = 24;
-        for (int t = 0; t < kMaxTries; t++)
-        {
-            if (TryGetObstacleSpawnPosition(out Vector3 pos))
-            {
-                SpawnObstacleAt(pos);
-                return;
-            }
-        }
+        TrySpawnWith(kMaxTries,
+            tryGetPos: (out Vector3 p) => TryGetObstacleSpawnPosition(out p),
+            spawnAt: SpawnObstacleAt);
     }
 
     #endregion // 장애물 소행성
@@ -804,38 +775,14 @@ public class ObjectSpawner : MonoBehaviour
         Vector2 rnd = Random.insideUnitCircle * r;
         pos = c + new Vector3(rnd.x, rnd.y, 0f);
 
-        // 플레이어 공전 원 내부 금지 규칙은 동일 적용
-        if (_player != null && _player.CurrentCenter != null)
-        {
-            Vector3 oc = _player.CurrentCenter.position;
-            // 플레이어 공전 반경 + 끝 오브젝트(지구/태양)의 크기를 고려한 갭을 더해 금지 영역을 확장한다.
-            float orbitR = Mathf.Max(0f, _player.Distance + orbitGap);
-            float d2 = (pos - oc).sqrMagnitude;
-            if (d2 < (orbitR - orbitEpsilon) * (orbitR - orbitEpsilon))
-            {
-                return false;
-            }
-        }
+        // 플레이어 공전 원 내부 금지 규칙 적용
+        if (IsInsideOrbitForbidden(pos, orbitEpsilon, orbitGap)) return false;
 
         // 장애물 간 최소 간격 3
-        float minSep2 = obstacleMinSeparation * obstacleMinSeparation;
-        for (int i = 0; i < _spawnedObstacles.Count; i++)
-        {
-            var tr = _spawnedObstacles[i];
-            if (tr == null) continue;
-            if ((tr.position - pos).sqrMagnitude < minSep2)
-                return false;
-        }
+        if (!IsFarEnoughFrom(_spawnedObstacles, pos, obstacleMinSeparation)) return false;
 
         // 일반 소행성과의 최소 간격은 일반 소행성 규칙(minSeparation)을 따른다
-        float generalSep2 = minSeparation * minSeparation;
-        for (int i = 0; i < _spawned.Count; i++)
-        {
-            var tr = _spawned[i];
-            if (tr == null) continue;
-            if ((tr.position - pos).sqrMagnitude < generalSep2)
-                return false;
-        }
+        if (!IsFarEnoughFrom(_spawned, pos, minSeparation)) return false;
 
         return true;
     }
@@ -871,27 +818,13 @@ public class ObjectSpawner : MonoBehaviour
         pos = c + new Vector3(rnd.x, rnd.y, 0f);
 
         // 규칙 4: 플레이어 공전 원(현재 중심 기준) 내부 금지 — 초기/일반 스폰 모두 적용
-        if (!ignoreOrbitRule && _player != null && _player.CurrentCenter != null)
+        if (!ignoreOrbitRule && IsInsideOrbitForbidden(pos, orbitEpsilon, orbitGap))
         {
-            Vector3 oc = _player.CurrentCenter.position;
-            // 플레이어 공전 반경 + 끝 오브젝트(지구/태양) 크기 고려 갭 반영
-            float orbitR = Mathf.Max(0f, _player.Distance + orbitGap);
-            float d2 = (pos - oc).sqrMagnitude;
-            if (d2 < (orbitR - orbitEpsilon) * (orbitR - orbitEpsilon))
-            {
-                return false; // 공전 원 내부는 배치 불가
-            }
+            return false; // 공전 원 내부는 배치 불가
         }
 
         // 규칙 5: 기존 소행성과 최소 간격 유지(0.5)
-        float minSep2 = minSeparation * minSeparation;
-        for (int i = 0; i < _spawned.Count; i++)
-        {
-            var tr = _spawned[i];
-            if (tr == null) continue;
-            if ((tr.position - pos).sqrMagnitude < minSep2)
-                return false;
-        }
+        if (!IsFarEnoughFrom(_spawned, pos, minSeparation)) return false;
 
         return true;
     }
@@ -953,6 +886,57 @@ public class ObjectSpawner : MonoBehaviour
 
         // 원근 카메라 등 특수 케이스에서는 기존 원형 판정을 사용(보수적 폴백)
         return IsOutsideDespawnBounds(worldPos);
+    }
+
+    // 공전 원 내부 금지 판정: 현재 플레이어 중심 기준으로 pos가 플레이어 반경 내부인지 확인한다.
+    private bool IsInsideOrbitForbidden(Vector3 pos, float epsilon, float gap)
+    {
+        if (_player == null || _player.CurrentCenter == null) return false;
+        Vector3 oc = _player.CurrentCenter.position; oc.z = 0f;
+        float orbitR = Mathf.Max(0f, _player.Distance + Mathf.Max(0f, gap));
+        float boundary = Mathf.Max(0f, orbitR - Mathf.Max(0f, epsilon));
+        float d2 = (pos - oc).sqrMagnitude;
+        return d2 < boundary * boundary;
+    }
+
+    // 최소 간격 판정: list 내 트랜스폼들과의 거리가 minDist 이상인지 확인한다.
+    private static bool IsFarEnoughFrom(List<Transform> list, Vector3 pos, float minDist)
+    {
+        if (list == null || list.Count == 0) return true;
+        float minSep2 = Mathf.Max(0f, minDist) * Mathf.Max(0f, minDist);
+        for (int i = 0; i < list.Count; i++)
+        {
+            var tr = list[i];
+            if (tr == null) continue;
+            if ((tr.position - pos).sqrMagnitude < minSep2) return false;
+        }
+        return true;
+    }
+
+    // 스폰 시도 루프 공통: 위치 획득 함수가 true를 반환하면 spawnAt을 호출하고 true 반환
+    private delegate bool TryGetPosition(out Vector3 pos);
+    private bool TrySpawnWith(int tries, TryGetPosition tryGetPos, Action<Vector3> spawnAt)
+    {
+        int t = Mathf.Max(1, tries);
+        for (int i = 0; i < t; i++)
+        {
+            if (tryGetPos(out var pos))
+            {
+                spawnAt?.Invoke(pos);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // CancellationTokenSource 해제 공통 유틸
+    private static void CancelAndDispose(ref CancellationTokenSource cts)
+    {
+        if (cts == null) return;
+        try { cts.Cancel(); }
+        catch { /* 취소 중 예외 무시 */ }
+        cts.Dispose();
+        cts = null;
     }
 
     // ---------- 풀 헬퍼: 유니티 내장 풀(ObjectPool) 딕셔너리 ----------
