@@ -274,9 +274,20 @@
 
 2025-09-13 16:25 | refactor | GameOverRadius 도입 및 참조 일원화(GameManager/Visualizer/ShootingStar), ObjectSpawner 네이밍/헬퍼 정리, region에 따라 코드 내 메소드 위치 정리 | Assets/Scripts/Game/ObjectSpawner.cs,Assets/Scripts/Game/GameManager.cs,Assets/Scripts/Game/GameOverBoundaryVisualizer.cs,Assets/Scripts/Game/ShootingStar.cs
 
-<!-- COMMIT_BOOKMARK -->
-
 2025-09-13 18:45 | refactor | 슈팅스타 이동 경로 선택 로직 리팩터링(좌우대칭 2차곡선·공전범위 교차 검사·kMaxTry 반복) | Assets/Scripts/Game/ObjectSpawner.cs
 2025-09-13 18:50 | refactor | ComputePassPoint를 법선 기반(플레이어 방향 선택)으로 변경 — 중점에서 플레이어 방향 법선으로 절댓값 오프셋 적용 | Assets/Scripts/Game/ObjectSpawner.cs
 2025-09-13 18:58 | refactor | shootingPassOffsetRange 제거 대응 — ComputePassPoint 내부에서 랜덤 오프셋 크기 생성하도록 변경 | Assets/Scripts/Game/ObjectSpawner.cs
 2025-09-13 19:05 | refactor | ObjectSpawner 불필요/미사용 로직 정리(OnDrawGizmos 내 미사용 변수 제거, GetDespawnRect 이중 검사 정리) | Assets/Scripts/Game/ObjectSpawner.cs
+
+<!-- COMMIT_BOOKMARK -->
+
+2025-09-13 19:18 | refactor | ShootingStar 성능 최적화 — Gradient/알파 키 캐시 재사용 및 진행도 증분을 경로 길이(\_trajTotalLength) 기반으로 변경 | Assets/Scripts/Game/ShootingStar.cs
+2025-09-13 19:32 | refactor | LineRenderer 인스펙터 주도 설정 전환 — 스크립트 폭/색/타일링 제어 제거, 인스펙터 Gradient 기반 캐시 초기화 | Assets/Scripts/Game/ShootingStar.cs
+2025-09-13 19:40 | refactor | ApplyTrajectoryStyle/UpdateTrajectoryErase 간소화 — 색상 키 1회 복사, 알파 키는 간단 구성으로 매 프레임 적용 | Assets/Scripts/Game/ShootingStar.cs
+2025-09-13 19:46 | refactor | UpdateTrajectoryErase에서 epsilon 사용 제거 — 동일 시간 키로 스텝 전환 처리 | Assets/Scripts/Game/ShootingStar.cs
+2025-09-13 19:52 | refactor | 슈팅스타 충돌 로직 단순화 — hitCooldown/\_lastHitTime 제거, 단일 피격 플래그와 콜라이더 비활성화만 유지 | Assets/Scripts/Game/ShootingStar.cs
+2025-09-13 19:52 | refactor | SFX 키 상수화 — "Hurt" 문자열을 GameConstants.SFX.Hurt로 통일 | Assets/Scripts/Game/ShootingStar.cs
+2025-09-13 19:52 | refactor | LineRenderer 자동 참조 보완 — Awake에서 GetComponentInChildren으로 trajectory 보장 | Assets/Scripts/Game/ShootingStar.cs
+2025-09-13 19:52 | refactor | 명칭 정리 — 메소드 EvaluatePosition를 PosOnLine으로 이름 변경하고 전역 참조 갱신 | Assets/Scripts/Game/ShootingStar.cs
+2025-09-13 19:52 | chore | 불필요 using 제거 — UnityEngine.Rendering 정리 | Assets/Scripts/Game/ShootingStar.cs
+2025-09-13 19:52 | refactor | 불필요 필드 정리 — speedRange/\_pathLength 제거(경로 길이 기반 이동으로 대체) | Assets/Scripts/Game/ShootingStar.cs

@@ -954,6 +954,7 @@ public class ObjectSpawner : MonoBehaviour
 
     // 주어진 슈팅스타 이동경로가
     // 현재 플레이어의 공전 범위을 교차/관통하는지 검사한다.
+    // 베지어-원 정확한 교차 확인은 비용이 커서, 샘플링+부호 변화로 근사 판정
     private bool IslinePassingPlayerOrbit(Vector3 start, Vector3 end, Vector3 passPoint)
     {
         if (_player == null || _player.CurrentCenter == null)

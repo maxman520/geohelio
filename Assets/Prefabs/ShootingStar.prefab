@@ -329,17 +329,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ShootingStar
   col: {fileID: 814028818377463502}
-  rb2d: {fileID: 4213377337135792466}
-  animator: {fileID: 7657965072649599053}
   trajectory: {fileID: 359413117401666917}
-  trajectoryColor: {r: 1, g: 1, b: 1, a: 1}
-  lineWidthWorld: 0.25
-  dashWorldSize: 0.3
-  speedRange: {x: 7, y: 7}
-  hitCooldown: 0.5
-  launchDelaySeconds: 1
-  startSfxKey: ShootingStarStart
-  burnSfxKey: ShootingStarBurn
+  launchDelaySeconds: 2
 --- !u!1 &7983039202033718866
 GameObject:
   m_ObjectHideFlags: 0
@@ -431,7 +422,7 @@ LineRenderer:
       m_Curve:
       - serializedVersion: 3
         time: 0
-        value: 1
+        value: 0.2974682
         inSlope: 0
         outSlope: 0
         tangentMode: 0
@@ -468,7 +459,7 @@ LineRenderer:
       atime6: 0
       atime7: 0
       m_Mode: 0
-      m_ColorSpace: -1
+      m_ColorSpace: 0
       m_NumColorKeys: 2
       m_NumAlphaKeys: 2
     numCornerVertices: 0
