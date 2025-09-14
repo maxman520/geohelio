@@ -491,8 +491,6 @@ public class AudioManager : SingletonMonoBehaviour<AudioManager>
             AudioManager.CancelAndClearCts(ref _cts);
         }
 
-        
-
         /// <summary>
         /// 지정한 클립을 재생한다.
         /// </summary>

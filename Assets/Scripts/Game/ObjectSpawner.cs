@@ -922,7 +922,8 @@ public class ObjectSpawner : MonoBehaviour
         for (int i = 0; i < kMaxTries; i++)
         {
             var candidate = ComputePassPoint(start, end, playerPos);
-            if (IslinePassingPlayerOrbit(start, end, candidate))
+            if (IslinePassingPlayerOrbit(start, end, candidate)
+            && IslinePassingGameOverRadius(start, end, candidate))
             {
                 passPoint = candidate;
                 return true;
@@ -980,6 +981,44 @@ public class ObjectSpawner : MonoBehaviour
         // 샘플링으로 교차 판정
         // 곡선과 원 사이의 거리 함수 f(u)=|P(u)-oc|-r
         // f(u) 부호 변화(원 내부↔외부 전환)로 교차를 검출
+        const int kSeg = 32;
+        float prev = 0f;
+        bool hasPrev = false;
+        float minAbs = float.MaxValue;
+        for (int i = 0; i <= kSeg; i++)
+        {
+            float u = i / (float)kSeg;
+            Vector3 p = PosOnLine(start, control, end, u);
+            float d = (p - cp).magnitude - r;
+            minAbs = Mathf.Min(minAbs, Mathf.Abs(d));
+            if (hasPrev)
+            {
+                if (prev == 0f || Mathf.Sign(prev) != Mathf.Sign(d))
+                {
+                    // 부호 변화 ⇒ 원과 교차
+                    return true;
+                }
+            }
+            prev = d; hasPrev = true;
+        }
+
+        // 직접 교차는 없었지만 허용 오차 내로 근접하면 통과로 인정
+        return minAbs <= tol;
+    }
+
+    // 주어진 슈팅스타 이동경로가
+    // 게임 오버 경계 원(카메라 중심, 반경=GetGameOverRadius)을 교차/관통하는지 검사한다.
+    private bool IslinePassingGameOverRadius(Vector3 start, Vector3 end, Vector3 passPoint)
+    {
+        // 제어점 복원: B(0.5) = passPoint ⇒ C = 2*B(0.5) - 0.5*(P0+P2)
+        Vector3 control = (2f * passPoint) - 0.5f * (start + end);
+
+        // 게임오버 경계 파라미터(카메라 중심, 반경=GetGameOverRadius)
+        Vector3 cp = Vector3.zero;
+        float r = Mathf.Max(0f, GetGameOverRadius());
+        float tol = Mathf.Max(0f, 0.25f);
+
+        // 샘플링으로 교차 판정
         const int kSeg = 32;
         float prev = 0f;
         bool hasPrev = false;

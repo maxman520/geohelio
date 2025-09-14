@@ -309,8 +309,11 @@
 2025-09-14 11:07 | chore | VibrationManager.cs diff 확인(변경 14 추가, 85 삭제) | Assets/Scripts/Utilities/VibrationManager.cs
 2025-09-14 11:16 | refactor | VibrationManager 단순화: 패턴/반복 진동 제거, 상수 기반 단축 메서드 추가, OnDestroy override/base 호출, using·전처리 주석 정리 | Assets/Scripts/Utilities/VibrationManager.cs
 
-<!-- COMMIT_BOOKMARK -->
-
 2025-09-14 11:48 | fix | ObjectSpawner 카메라 반경 계산 수정: 가로 절반→min(가로,세로) 기반으로 스폰/게임오버 반경과 슈팅스타 속도 산출 일관화 | Assets/Scripts/Game/ObjectSpawner.cs
 2025-09-14 11:55 | revert | GameManager 경계 판정 변경 되돌림(원인 재분석 위해 원본 복구) | Assets/Scripts/Game/GameManager.cs,WORKLOG.MD
 2025-09-14 12:20 | fix | GameManager 반지름 임계 로직 정리: 시작 반지름/게임오버 반지름 분리(initialPlayerRadius, gameOverPlayerRadius), 최초 파괴 시 최소 반지름 전환·감쇠 억제 플래그 제거, 모든 최소 비교에 gameOverPlayerRadius 적용 (+13/-36) | Assets/Scripts/Game/GameManager.cs
+
+<!-- COMMIT_BOOKMARK -->
+
+2025-09-14 12:45 | feat | ObjectSpawner에 게임오버 경계 교차 판정 함수 추가(IslinePassingGameOverRadius) — 플레이어 오빗 교차 판정 로직 재사용 | Assets/Scripts/Game/ObjectSpawner.cs
+2025-09-14 12:50 | feat | GetPassingCurve에 GameOverRadius 교차 조건 추가(IslinePassingGameOverRadius와 병행 검사) | Assets/Scripts/Game/ObjectSpawner.cs
