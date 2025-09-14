@@ -111,11 +111,13 @@ public class ObjectSpawner : MonoBehaviour
             // 직교 카메라 기반으로 스폰 반경을 설정한다(화면 가로 절반 길이).
             // 그런 다음 해당 반경을 기준으로 초기 개수와 최대 동시 개수를 산출한다.
 
-            float cameraHalfWidth = _camera.orthographicSize * _camera.aspect;
+            float cameraHalfWidth = _camera.orthographicSize * _camera.aspect; // 가로
+            float cameraHalfheight = _camera.orthographicSize; // 세로
+            float radiusCandidate = Math.Min(cameraHalfWidth, cameraHalfheight); // 둘 중 더 짧은 쪽으로 반지름 후보 설정
             
-            _shootingSpeed = Random.Range(cameraHalfWidth * 4/5, cameraHalfWidth * 6/5);
-            _spawnRadius = cameraHalfWidth - 1f;
-            _blackHoleSpawnRadius = _spawnRadius - 1f;
+            _spawnRadius = radiusCandidate - 1f;
+            _blackHoleSpawnRadius = radiusCandidate - 1f;
+            _shootingSpeed = Random.Range(radiusCandidate * 4/5, radiusCandidate * 6/5);
             // 반경 기반 파생 값 설정
             // spawnRadius = 6 기준 initialCount 20개, maxAlive 40개가 밸런스가 적합하다고 판단.
             // 계산하면
@@ -558,9 +560,11 @@ public class ObjectSpawner : MonoBehaviour
     {
         if (_camera != null && _camera.orthographic)
         {
-            return _camera.orthographicSize * _camera.aspect;
+            float cameraHalfWidth = _camera.orthographicSize * _camera.aspect; // 가로
+            float cameraHalfheight = _camera.orthographicSize; // 세로
+            return Math.Min(cameraHalfWidth, cameraHalfheight); // 둘 중 더 짧은 쪽을 return
         }
-        // 폴백: _spawnRadius + 1 사용(원근 카메라 또는 미발견 시. _spawnRadius는 가로 절반길이의 -1 이므로)
+        // 폴백: _spawnRadius + 1 사용(원근 카메라 또는 미발견 시. _spawnRadius는 반지름 후보(radiusCandidate)의 -1 이므로)
         return _spawnRadius + 1f;
     }
 

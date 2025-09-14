@@ -1,7 +1,8 @@
 using System;
 using UnityEngine;
-using UnityEngine.SceneManagement;
+using Unity.Serialization;
 using Cysharp.Threading.Tasks;
+using UnityEngine.Serialization;
 
 /// <summary>
 /// 게임 진행 로직을 총괄하는 GameManager.
@@ -26,10 +27,10 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
     [SerializeField] private ObjectSpawner objectSpawner; // 오브젝트 스포너
 
     [Header("플레이어 설정")]
-    [Tooltip("게임 시작 시 최소 반지름(처음 소행성 파괴 전)")]
-    [SerializeField] private float initialMinPlayerRadius = 1.5f;
-    [Tooltip("플레이어가 소행성을 한 번이라도 파괴한 후의 최소 반지름")]
-    [SerializeField] private float postFirstDestroyMinPlayerRadius = 0.8f;
+    [Tooltip("게임 시작 시 반지름")]
+    [SerializeField] private float initialPlayerRadius = 1.5f;
+    [Tooltip("게임 오버 판정 경계값(플레이어 반지름)")]
+    [SerializeField] private float gameOverPlayerRadius = 0.8f;
     [Tooltip("플레이어 반지름(거리) 최대값")]
     [SerializeField] private float maxPlayerRadius = 3.0f;
     [Tooltip("소행성 파괴 시 증가량")]
@@ -44,12 +45,9 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
     private int _score;
     private float _elapsedTime;
     private int _comboCount; // 동일 중심에서 연속 파괴 콤보 수(0부터 시작)
-    private bool _hasDestroyedAsteroid; // 최초 소행성 파괴 여부
-    private float _currentMinPlayerRadius; // 런타임 최소 반지름
 
     // 더블 스코어/거리 제어
     private bool _doubleScoreActive;         // 더블 스코어 모드 여부
-    private bool _suppressRadiusDecay;       // 거리 자연 감소 일시 중지
     private bool _lockPlayerDistance;        // 거리 고정 여부
     private float _lockedDistanceValue = 3f; // 고정 거리 값
 
@@ -63,7 +61,6 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
     public GameState State => _state;
     public int Score => _score;
     public float ElapsedTime => _elapsedTime;
-    public float PlayerRadius => player != null ? player.Distance : 0f;
 
     #region 생명주기
     protected override void Awake()
@@ -75,8 +72,6 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
         _score = 0;
         _elapsedTime = 0f;
         _comboCount = 0;
-        _hasDestroyedAsteroid = false;
-        _currentMinPlayerRadius = Mathf.Max(0f, initialMinPlayerRadius);
         SetState(GameState.Init);
     }
 
@@ -175,12 +170,10 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
         // 참조 보장(플레이어/스포너 + 이벤트 구독)
         EnsureReferences();
 
-        // 시작 반지름(거리)를 최소값으로 설정한 뒤 배치 초기화
+        // 시작 반지름을 설정한 뒤 배치 초기화
         if (player != null)
         {
-            _hasDestroyedAsteroid = false;
-            _currentMinPlayerRadius = Mathf.Max(0f, initialMinPlayerRadius);
-            player.Distance = Mathf.Clamp(_currentMinPlayerRadius, 0f, maxPlayerRadius);
+            player.Distance = Mathf.Clamp(initialPlayerRadius, 0f, maxPlayerRadius);
             player.ResetOrbitToEarthAtOrigin();
         }
 
@@ -308,13 +301,6 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
         AddScore(amount);
         _comboCount++;
 
-        // 최소 반지름 전환: 최초 파괴 시 더 낮은 최소값 적용
-        if (!_hasDestroyedAsteroid)
-        {
-            _hasDestroyedAsteroid = true;
-            _currentMinPlayerRadius = Mathf.Max(0f, postFirstDestroyMinPlayerRadius);
-        }
-
         // 소행성 파괴 보상: 플레이어 반지름 증가
         SetPlayerDistance(player.Distance + playerRadiusIncreaseOnAsteroid);
         CheckGameOverByRadius();
@@ -338,7 +324,7 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
         }
 
         // 최소/최대 반지름 범위로 클램프(최소는 런타임 최소값)
-        float minR = Mathf.Max(0f, _currentMinPlayerRadius);
+        float minR = Mathf.Max(0f, gameOverPlayerRadius);
         float maxR = Mathf.Max(minR, maxPlayerRadius);
         float clamped = Mathf.Clamp(newDistance, minR, maxR);
         player.Distance = clamped;
@@ -360,14 +346,13 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
     private void DecayPlayerRadius(float deltaTime)
     {
         if (player == null) return;
-        if (_suppressRadiusDecay) return; // 감쇠 일시 중지
         if (playerRadiusDecayPerSecond <= 0f) return;
 
-        float dec = Mathf.Max(0f, playerRadiusDecayPerSecond) * Mathf.Max(0f, deltaTime);
+        float dec = Mathf.Max(0f, playerRadiusDecayPerSecond) * Mathf.Max(0f, deltaTime); // 시간 당 감쇠 정도
         if (dec <= 0f) return;
 
         // 최소값 아래로 내려가지 않도록 클램프
-        float target = Mathf.Max(_currentMinPlayerRadius, player.Distance - dec);
+        float target = Mathf.Max(gameOverPlayerRadius, player.Distance - dec);
         SetPlayerDistance(target);
         CheckGameOverByRadius();
     }
@@ -380,7 +365,7 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
     {
         if (player == null) return false;
         float r = player.Distance;
-        float min = Mathf.Max(0f, _currentMinPlayerRadius);
+        float min = Mathf.Max(0f, gameOverPlayerRadius);
 
         if (r > min)
         {
@@ -400,7 +385,7 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
         if (player == null) return;
         if (_state != GameState.Playing) return;
 
-        float min = Mathf.Max(0f, _currentMinPlayerRadius);
+        float min = Mathf.Max(0f, gameOverPlayerRadius);
 
         if (player.Distance <= min)
         {
@@ -466,14 +451,6 @@ public class GameManager : SingletonMonoBehaviour<GameManager>
     }
 
     public bool IsDoubleScoreActive => _doubleScoreActive;
-
-    /// <summary>
-    /// 플레이어 반지름 자연 감쇠를 일시 중지/해제한다.
-    /// </summary>
-    public void SetRadiusDecaySuppressed(bool value)
-    {
-        _suppressRadiusDecay = value;
-    }
 
     /// <summary>
     /// 플레이어 반지름을 지정 값으로 고정한다.

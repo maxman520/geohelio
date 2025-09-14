@@ -126,7 +126,6 @@ public class DoubleScoreModeController : MonoBehaviour
         if (gameManager != null)
         {
             gameManager.SetDoubleScoreActive(true);
-            gameManager.SetRadiusDecaySuppressed(true);
             gameManager.LockPlayerDistance(fixedDistance);
         }
         if (player != null)
@@ -186,7 +185,6 @@ public class DoubleScoreModeController : MonoBehaviour
         if (gameManager != null)
         {
             gameManager.UnlockPlayerDistance();
-            gameManager.SetRadiusDecaySuppressed(false);
             gameManager.SetDoubleScoreActive(false);
         }
 
