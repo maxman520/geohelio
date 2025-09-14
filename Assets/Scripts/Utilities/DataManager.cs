@@ -94,7 +94,7 @@ public class DataManager : SingletonMonoBehaviour<DataManager>
 
         ApplyData(data);
         // 최초 로드 후 이벤트로 매니저, 버튼들이 현재 상태를 재적용할 기회를 제공
-        try { OnSettingsChanged?.Invoke(); } catch { }
+        OnSettingsChanged?.Invoke();
     }
 
     /// <summary>
@@ -144,7 +144,7 @@ public class DataManager : SingletonMonoBehaviour<DataManager>
         AdRestartClickCount = Mathf.Max(0, data.adRestartClickCount);
         AdPendingInterstitials = Mathf.Max(0, data.adPendingInterstitials);
         AdMinIntervalSeconds = Mathf.Max(0, data.adMinIntervalSeconds);
-        AdLastShowUnixMs = (long)Mathf.Max(0, data.adLastShowUnixMs);
+        AdLastShowUnixMs = Math.Max(0L, data.adLastShowUnixMs);
     }
 
     /// <summary>
@@ -169,7 +169,7 @@ public class DataManager : SingletonMonoBehaviour<DataManager>
         if (Muted == value) return;
         Muted = value;
         SaveAsync().Forget();
-        try { OnSettingsChanged?.Invoke(); } catch { }
+        OnSettingsChanged?.Invoke();
     }
 
     /// <summary>
@@ -180,7 +180,7 @@ public class DataManager : SingletonMonoBehaviour<DataManager>
         if (VibrationEnabled == value) return;
         VibrationEnabled = value;
         SaveAsync().Forget();
-        try { OnSettingsChanged?.Invoke(); } catch { }
+        OnSettingsChanged?.Invoke();
     }
 
     private void OnApplicationPause(bool pause)
@@ -192,13 +192,14 @@ public class DataManager : SingletonMonoBehaviour<DataManager>
         }
     }
 
-    private void OnApplicationQuit()
+    protected override void OnApplicationQuit()
     {
+        base.OnApplicationQuit();
         // 앱 종료 직전에 마지막 저장 시도
         SaveAsync().Forget();
     }
 
-    # region Ads API
+    #region Ads API
     /// <summary>
     /// 재시작/재도전 클릭 누계를 1 증가시키고 즉시 저장한다.
     /// </summary>

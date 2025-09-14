@@ -84,6 +84,7 @@ public class AudioManager : SingletonMonoBehaviour<AudioManager>
 
     protected override void OnDestroy()
     {
+        base.OnDestroy();
         // DataManager 구독 해제
         var dm = DataManager.Instance;
         if (dm != null)

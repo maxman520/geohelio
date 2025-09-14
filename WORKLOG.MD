@@ -301,8 +301,12 @@
 2025-09-13 23:52 | refactor | OnClickRestart 폴백 로직 단순화(UIManager 미존재 경고 추가, GameManager 재탐색 제거) | Assets/Scripts/UI/TopLeftButtons.cs
 2025-09-13 23:52 | docs | 클래스 Summary 정정 및 경고 메시지 표현 보정(DataManager 설정 아이콘 초기화 경고) | Assets/Scripts/UI/TopLeftButtons.cs
 
-<!-- COMMIT_BOOKMARK -->
 
 2025-09-14 00:20 | refactor | AudioManager 간소화: PlaySfx에서 TryGetSfxClip 재사용, Attach 중복 호출 제거, 음소거 적용 경로 일원화(ApplyMuteToAll), CTS 관리 헬퍼 도입 | Assets/Scripts/Utilities/AudioManager.cs
 2025-09-14 00:26 | refactor | 공용 페이드 헬퍼(FadeVolumeAsync) 도입 및 BGM/SFX 페이드 루프 통합 | Assets/Scripts/Utilities/AudioManager.cs
 2025-09-14 01:30 | refactor | AudioManager 정리: 채널 재사용 시 중복 초기화 제거, Owner 감시 루틴에서 중복 정지 제거, 미사용 필드/메서드 제거(SfxHandle.\_am, SfxChannel.Attach) | Assets/Scripts/Utilities/AudioManager.cs
+
+<!-- COMMIT_BOOKMARK -->
+2025-09-14 02:05 | docs | VibrationManager.cs 리뷰 및 리팩터링 계획서 추가 | VIBRATION_MANAGER_REFACTORING_PLAN.md,WORKLOG.MD
+2025-09-14 11:07 | chore | VibrationManager.cs diff 확인(변경 14 추가, 85 삭제) | Assets/Scripts/Utilities/VibrationManager.cs
+2025-09-14 11:16 | refactor | VibrationManager 단순화: 패턴/반복 진동 제거, 상수 기반 단축 메서드 추가, OnDestroy override/base 호출, using·전처리 주석 정리 | Assets/Scripts/Utilities/VibrationManager.cs

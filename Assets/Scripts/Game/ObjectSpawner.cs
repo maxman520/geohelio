@@ -370,8 +370,11 @@ public class ObjectSpawner : MonoBehaviour
                 var go = Instantiate(prefab);
                 // 풀 키 태그 설정
                 var tag = go.GetComponent<PooledObjectTag>();
-                if (tag == null) tag = go.AddComponent<PooledObjectTag>();
-                tag.SetPrefab(prefab);
+                if (tag == null)
+                {
+                    tag = go.AddComponent<PooledObjectTag>();
+                    tag.SetPrefab(prefab);
+                }
                 go.SetActive(false);
                 return go;
             },

@@ -1,6 +1,3 @@
-using System;
-using System.Threading;
-using Cysharp.Threading.Tasks;
 using UnityEngine;
 
 /// <summary>
@@ -10,6 +7,13 @@ public class VibrationManager : SingletonMonoBehaviour<VibrationManager>
 {
     [Header("설정")]
     [SerializeField] private bool enabledByDefault = true; // 데이터가 없을 때 기본값
+
+    private const int ShortMs = 30;
+    private const int MediumMs = 60;
+    private const int HeavyMs = 100;
+    public void VibrateShort() => VibrateMs(ShortMs);
+    public void VibrateMedium() => VibrateMs(MediumMs);
+    public void VibrateHeavy()  => VibrateMs(HeavyMs);
 
     public bool IsEnabled { get; private set; } = true;
 
@@ -25,9 +29,11 @@ public class VibrationManager : SingletonMonoBehaviour<VibrationManager>
 #if UNITY_ANDROID && !UNITY_EDITOR
         try
         {
+            // 진동 관련 참조 초기화
             var unityPlayer = new AndroidJavaClass("com.unity3d.player.UnityPlayer");
             var activity = unityPlayer.GetStatic<AndroidJavaObject>("currentActivity");
             _vibrator = activity.Call<AndroidJavaObject>("getSystemService", "vibrator");
+
             var version = new AndroidJavaClass("android.os.Build$VERSION");
             _apiLevel = version.GetStatic<int>("SDK_INT");
         }
@@ -49,8 +55,9 @@ public class VibrationManager : SingletonMonoBehaviour<VibrationManager>
         }
     }
 
-    private void OnDestroy()
+    protected override void OnDestroy()
     {
+        base.OnDestroy();
         var dm = DataManager.Instance;
         if (dm != null)
         {
@@ -67,79 +74,10 @@ public class VibrationManager : SingletonMonoBehaviour<VibrationManager>
         }
     }
 
-    public void VibrateShort()
-    {
-        VibrateMs(30);
-    }
-
-    public void VibrateMedium()
-    {
-        VibrateMs(60);
-    }
-
-    public void VibrateHeavy()
-    {
-        VibrateMs(100);
-    }
-
-    public void VibratePattern(int[] timingsMs, int[] amplitudes, int repeat = -1)
-    {
-        if (!CanVibrate()) return;
-#if UNITY_ANDROID && !UNITY_EDITOR
-        try
-        {
-            if (_vibrator == null)
-            {
-                Debug.LogWarning("[VibrationManager] Vibrator 객체가 없습니다.");
-                return;
-            }
-            if (_apiLevel >= 26)
-            {
-                var vibrationEffectClass = new AndroidJavaClass("android.os.VibrationEffect");
-                var effect = vibrationEffectClass.CallStatic<AndroidJavaObject>(
-                    "createWaveform", ToLongArray(timingsMs), amplitudes, repeat);
-                _vibrator.Call("vibrate", effect);
-            }
-            else
-            {
-                // 구버전 폴백: 간단히 첫 타이밍만 사용
-                long first = (timingsMs != null && timingsMs.Length > 0) ? timingsMs[0] : 50;
-                _vibrator.Call("vibrate", first);
-            }
-        }
-        catch (Exception e)
-        {
-            Debug.LogWarning($"[VibrationManager] 패턴 진동 중 예외: {e.Message}");
-        }
-#elif UNITY_IOS && !UNITY_EDITOR
-        // iOS 기본 진동만 지원(고급 햅틱은 네이티브 연계 필요)
-        Handheld.Vibrate();
-#else
-        // 에디터/기타: no-op
-#endif
-    }
-
-    public async UniTask VibrateRepeatedAsync(int intervalMs, CancellationToken ct)
-    {
-        intervalMs = Mathf.Max(10, intervalMs);
-        while (!ct.IsCancellationRequested)
-        {
-            VibrateShort();
-            try
-            {
-                await UniTask.Delay(TimeSpan.FromMilliseconds(intervalMs), cancellationToken: ct);
-            }
-            catch (OperationCanceledException)
-            {
-                break;
-            }
-        }
-    }
-
     private void VibrateMs(long ms)
     {
         if (!CanVibrate()) return;
-#if UNITY_ANDROID && !UNITY_EDITOR
+#if UNITY_ANDROID && !UNITY_EDITOR // Android
         try
         {
             if (_vibrator == null)
@@ -162,10 +100,10 @@ public class VibrationManager : SingletonMonoBehaviour<VibrationManager>
         {
             Debug.LogWarning($"[VibrationManager] 진동 중 예외: {e.Message}");
         }
-#elif UNITY_IOS && !UNITY_EDITOR
+#elif UNITY_IOS && !UNITY_EDITOR // IOS
         Handheld.Vibrate();
 #else
-        // 에디터/기타: no-op
+        // 기타: no-op
 #endif
     }
 
@@ -176,14 +114,5 @@ public class VibrationManager : SingletonMonoBehaviour<VibrationManager>
         return true;
     }
 
-#if UNITY_ANDROID && !UNITY_EDITOR
-    private static long[] ToLongArray(int[] src)
-    {
-        if (src == null) return null;
-        var dst = new long[src.Length];
-        for (int i = 0; i < src.Length; i++) dst[i] = src[i];
-        return dst;
-    }
-#endif
 }
 
