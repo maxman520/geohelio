@@ -922,8 +922,8 @@ public class ObjectSpawner : MonoBehaviour
         for (int i = 0; i < kMaxTries; i++)
         {
             var candidate = ComputePassPoint(start, end, playerPos);
-            if (IslinePassingPlayerOrbit(start, end, candidate)
-            && IslinePassingGameOverRadius(start, end, candidate))
+            if (IslinePassingPlayerOrbit(start, end, candidate) // 1
+            && IslinePassingGameOverRadius(start, end, candidate)) // 2
             {
                 passPoint = candidate;
                 return true;

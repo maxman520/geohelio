@@ -313,7 +313,11 @@
 2025-09-14 11:55 | revert | GameManager 경계 판정 변경 되돌림(원인 재분석 위해 원본 복구) | Assets/Scripts/Game/GameManager.cs,WORKLOG.MD
 2025-09-14 12:20 | fix | GameManager 반지름 임계 로직 정리: 시작 반지름/게임오버 반지름 분리(initialPlayerRadius, gameOverPlayerRadius), 최초 파괴 시 최소 반지름 전환·감쇠 억제 플래그 제거, 모든 최소 비교에 gameOverPlayerRadius 적용 (+13/-36) | Assets/Scripts/Game/GameManager.cs
 
-<!-- COMMIT_BOOKMARK -->
 
 2025-09-14 12:45 | feat | ObjectSpawner에 게임오버 경계 교차 판정 함수 추가(IslinePassingGameOverRadius) — 플레이어 오빗 교차 판정 로직 재사용 | Assets/Scripts/Game/ObjectSpawner.cs
 2025-09-14 12:50 | feat | GetPassingCurve에 GameOverRadius 교차 조건 추가(IslinePassingGameOverRadius와 병행 검사) | Assets/Scripts/Game/ObjectSpawner.cs
+
+<!-- COMMIT_BOOKMARK -->
+2025-09-15 22:12 | docs | README 주요 폴더/아키텍처 최신화 | README.md
+2025-09-15 22:00 | docs | README 개선안 추가(더블 스코어·광고·입력·경계/스폰 보강) | README_PROPOSAL.md
+2025-09-15 22:20 | docs | README.md 구조 변경 및 내용 최신화 | README.md
